@@ -59,3 +59,33 @@ class PerfilUsuario(models.Model):
     is_admin = models.BooleanField(default=False)
 
     def __str__(self): return f"{self.usuario.username} - {self.empresa.nome_fantasia}"
+
+# 6. ESTOQUE DE EPIs
+class TipoEPI(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    nome = models.CharField(max_length=100, verbose_name="Nome do Tipo", help_text="Ex: Luva de Raspa, Bota de Segurança")
+    
+    def __str__(self): return self.nome
+
+class Localizacao(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    nome = models.CharField(max_length=100, verbose_name="Nome do Local", help_text="Ex: Armário 1, Galpão B")
+
+    def __str__(self): return self.nome
+
+# 7. ESTOQUE DE EPIs (Atualizado com Vínculos)
+class EPI(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    
+    # Agora usamos ForeignKey em vez de CharField
+    tipo = models.ForeignKey(TipoEPI, on_delete=models.PROTECT, verbose_name="Tipo de EPI")
+    local = models.ForeignKey(Localizacao, on_delete=models.PROTECT, verbose_name="Localização")
+    
+    codigo_unico = models.CharField(max_length=50, verbose_name="Código Interno")
+    tamanho = models.CharField(max_length=20, verbose_name="Tamanho", help_text="Ex: 39, M, Único")
+    ca = models.CharField(max_length=50, verbose_name="C.A.")
+    quantidade = models.IntegerField(default=0)
+    data_validade = models.DateField(null=True, blank=True, verbose_name="Validade")
+
+    def __str__(self):
+        return f"{self.tipo.nome} - {self.tamanho}"

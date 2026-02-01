@@ -1,0 +1,59 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4 row">
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h4>Nova Localização</h4>
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="{{ form.nome.id_for_label }}" class="form-label">Nome do Local</label>
+                    {{ form.nome }}
+                    <small class="text-muted">Ex: Armário 1, Galpão B, Caixa de Ferramentas</small>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100">Salvar Local</button>
+            </form>
+            <a href="{% url 'lista_epis' %}" class="btn btn-link mt-2 w-100">Voltar para Estoque</a>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card p-3">
+            <h4>Locais Cadastrados</h4>
+            
+            {% if locais %}
+                <ul class="list-group mt-3">
+                    {% for local in locais %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ local.nome }}
+                        
+                        <form method="post" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja apagar este local?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="delete_id" value="{{ local.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                🗑️
+                            </button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="alert alert-info mt-3">
+                    Nenhum local cadastrado ainda.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    var inputs = document.querySelectorAll('input[type="text"]');
+    inputs.forEach(function(input) {
+        input.classList.add('form-control');
+    });
+</script>
+
+{% endblock %}

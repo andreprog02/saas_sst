@@ -1,0 +1,33 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container mt-4 row">
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h4>Novo Tipo de EPI</h4>
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-success w-100">Salvar</button>
+            </form>
+            <a href="{% url 'lista_epis' %}" class="btn btn-link mt-2 w-100">Voltar</a>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card p-3">
+            <h4>Tipos Cadastrados</h4>
+            <ul class="list-group">
+                {% for tipo in tipos %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ tipo.nome }}
+                    <form method="post" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="delete_id" value="{{ tipo.id }}">
+                        <button type="submit" class="btn btn-sm btn-danger">X</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

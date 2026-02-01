@@ -1,0 +1,44 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>📦 Estoque de EPIs</h2>
+        <div>
+            <a href="{% url 'gerenciar_tipos' %}" class="btn btn-outline-secondary btn-sm">Gerir Tipos</a>
+            <a href="{% url 'gerenciar_locais' %}" class="btn btn-outline-secondary btn-sm">Gerir Locais</a>
+            <a href="{% url 'criar_epi' %}" class="btn btn-primary">+ Novo EPI</a>
+        </div>
+    </div>
+    <div class="card p-3">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>CA</th>
+                    <th>Tamanho</th>
+                    <th>Qtd</th>
+                    <th>Local</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for epi in epis %}
+                <tr>
+                    <td>{{ epi.tipo.nome }}</td>
+                    <td>{{ epi.ca }}</td>
+                    <td>{{ epi.tamanho }}</td>
+                    <td>{{ epi.quantidade }}</td>
+                    <td>{{ epi.local.nome }}</td>
+                    <td>
+                        <a href="{% url 'editar_epi' epi.pk %}" class="btn btn-sm btn-info">✏️</a>
+                        <a href="{% url 'deletar_epi' epi.pk %}" class="btn btn-sm btn-danger">🗑️</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6">Nenhum EPI cadastrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
