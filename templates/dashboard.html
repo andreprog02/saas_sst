@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard SST - Visão Geral</title>
+    <style>
+        /* --- Reset e Base --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        /* --- Header / Topo --- */
+        header {
+            background-color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .user-name {
+            font-weight: 500;
+            color: #555;
+        }
+        .btn-logout {
+            background-color: transparent;
+            border: 1px solid #dc3545;
+            color: #dc3545;
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        /* --- Conteúdo Principal --- */
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .welcome-section {
+            margin-bottom: 30px;
+        }
+        .welcome-section h1 {
+            margin: 0;
+            font-size: 2rem;
+            color: #2c3e50;
+        }
+        .welcome-section p {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* --- Grid de Cards --- */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        /* --- Card Genérico --- */
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #007bff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* --- Card da Empresa --- */
+        .company-info p {
+            margin: 8px 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .company-info strong {
+            color: #555;
+            width: 80px;
+            display: inline-block;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .badge-success { background-color: #d4edda; color: #155724; }
+        .badge-danger { background-color: #f8d7da; color: #721c24; }
+
+        /* --- Botões de Ação (Menu) --- */
+        .action-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .action-list li {
+            margin-bottom: 10px;
+        }
+        .btn-action {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+        .btn-action:hover {
+            background-color: #e9ecef;
+            border-left-color: #007bff;
+        }
+        .btn-action span {
+            font-size: 1.2rem;
+        }
+
+        /* --- Rodapé --- */
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="#" class="logo">🛡️ SST SaaS</a>
+        <div class="user-menu">
+            <span class="user-name">Olá, {{ user.username }}</span>
+            <form action="{% url 'logout' %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-logout">Sair</button>
+            </form>
+        </div>
+    </header>
+
+    <div class="container">
+        
+        <div class="welcome-section">
+            <h1>Painel de Controle</h1>
+            <p>Gerencie a segurança do trabalho da sua empresa em um só lugar.</p>
+        </div>
+
+        <div class="dashboard-grid">
+            
+            <div class="card company-info">
+                <h3>🏢 Minha Empresa</h3>
+                {% if empresa %}
+                    <p><strong>Nome:</strong> {{ empresa.nome_fantasia }}</p>
+                    <p><strong>CNPJ:</strong> {{ empresa.cnpj }}</p>
+                    <p>
+                        <strong>Status:</strong> 
+                        {% if empresa.ativo %}
+                            <span class="badge badge-success">Ativa</span>
+                        {% else %}
+                            <span class="badge badge-danger">Inativa</span>
+                        {% endif %}
+                    </p>
+                    <p style="border:none; color:#888; font-size:0.9rem;">
+                        📍 {{ empresa.endereco }}
+                    </p>
+                {% else %}
+                    <p>Você não tem uma empresa vinculada.</p>
+                    <a href="#" style="color: #007bff;">Vincular Empresa</a>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <h3>🚀 Ações Rápidas</h3>
+                <ul class="action-list">
+                    <li>
+                        <a href="{% url 'criar_setor' %}" class="btn-action">
+                            <div>
+                                <strong>Criar Setores</strong>
+                                <div style="font-size:0.8rem; color:#666;">Definir EPIs, NRs e Treinamentos</div>
+                            </div>
+                            <span>🏭</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'criar_funcionario' %}" class="btn-action">
+                            <div>
+                                <strong>Novo Funcionário</strong>
+                                <div style="font-size:0.8rem; color:#666;">Cadastrar admissão e vincular setor</div>
+                            </div>
+                            <span>👤</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3>📊 Gestão</h3>
+                <ul class="action-list">
+                    <li>
+                        <a href="{% url 'lista_funcionarios' %}" class="btn-action">
+                            Listar Funcionários
+                            <span>📋</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="btn-action" style="opacity: 0.6; cursor: not-allowed;">
+                            Gerenciar EPIs (Em breve)
+                            <span>🦺</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+
+        <footer>
+            &copy; 2026 Sistema SST - Versão 1.0
+        </footer>
+    </div>
+
+</body>
+</html>

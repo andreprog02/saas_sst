@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo Setor - SST</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
+        h2 { color: #333; margin-top: 0; }
+        
+        label { font-weight: bold; color: #555; display: block; margin-top: 15px; margin-bottom: 5px; }
+        
+        /* Estilo dos inputs de texto */
+        input[type="text"], textarea { 
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; 
+            font-family: inherit;
+        }
+
+        /* --- Estilo Especial para a Lista de NRs --- */
+        .checkbox-container {
+            max-height: 200px; /* Altura máxima da caixa */
+            overflow-y: auto;  /* Barra de rolagem se passar da altura */
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+        .checkbox-container label {
+            display: flex; /* Alinha checkbox e texto */
+            align-items: center;
+            font-weight: normal; /* Tira o negrito das opções */
+            margin-top: 5px;
+            cursor: pointer;
+        }
+        .checkbox-container input {
+            margin-right: 10px;
+            width: auto; /* Checkbox não pode ser width 100% */
+        }
+        /* ------------------------------------------ */
+
+        button { background: #007bff; color: white; padding: 12px; border: none; width: 100%; font-size: 16px; cursor: pointer; border-radius: 4px; margin-top: 20px; font-weight: bold;}
+        button:hover { background: #0056b3; }
+        .btn-back { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🏭 Novo Setor & Riscos</h2>
+        <p style="color:#666; font-size: 0.9rem;">Defina os requisitos para este ambiente de trabalho.</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <label>Nome do Setor:</label>
+            {{ form.nome }}
+
+            <label>Normas Regulamentadoras (NRs):</label>
+            <div class="checkbox-container">
+                {{ form.nrs_obrigatorias }}
+            </div>
+            
+            <label>EPIs Obrigatórios:</label>
+            {{ form.epis_obrigatorios }}
+
+            <label>Treinamentos Necessários:</label>
+            {{ form.treinamentos }}
+
+            <label>Vacinas:</label>
+            {{ form.vacinas_necessarias }}
+
+            <button type="submit">Salvar Setor</button>
+            <a href="{% url 'dashboard' %}" class="btn-back">Cancelar</a>
+        </form>
+    </div>
+</body>
+</html>

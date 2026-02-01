@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funcionários - SST</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 1rem;
+        }
+        h1 { margin: 0; color: #333; }
+        
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .btn-add:hover { background-color: #218838; }
+        
+        .btn-back {
+            color: #666;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        /* Lista */
+        ul { list-style: none; padding: 0; }
+        li {
+            background: #fff;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        li:hover { border-color: #007bff; }
+        
+        .info strong { display: block; font-size: 1.1rem; color: #333; }
+        .info span { color: #666; font-size: 0.9rem; }
+        
+        .empty-state {
+            text-align: center;
+            color: #888;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div>
+                <a href="{% url 'dashboard' %}" class="btn-back">← Voltar ao Dashboard</a>
+                <h1>Funcionários</h1>
+            </div>
+            <a href="{% url 'criar_funcionario' %}" class="btn-add">+ Novo Funcionário</a>
+        </header>
+
+        <ul>
+            {% for func in funcionarios %}
+                <li>
+                    <div class="info">
+                        <strong>{{ func.nome }}</strong>
+                        <span>{{ func.cargo }} • Admissão: {{ func.data_admissao|date:"d/m/Y" }}</span>
+                    </div>
+                    <div>
+                        <span style="color: green; font-size: 0.8rem;">● Ativo</span>
+                    </div>
+                </li>
+            {% empty %}
+                <div class="empty-state">
+                    <h3>Nenhum funcionário encontrado</h3>
+                    <p>Cadastre o primeiro funcionário da sua empresa clicando no botão acima.</p>
+                </div>
+            {% endfor %}
+        </ul>
+    </div>
+
+</body>
+</html>

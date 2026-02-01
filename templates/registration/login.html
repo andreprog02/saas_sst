@@ -1,0 +1,7 @@
+<h2>Acesso ao Sistema SST</h2>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Entrar</button>
+</form>
+<p>Novo por aqui? <a href="{% url 'cadastro' %}">Cadastre sua empresa aqui</a></p>
