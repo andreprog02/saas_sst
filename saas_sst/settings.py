@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -76,14 +78,11 @@ WSGI_APPLICATION = 'saas_sst.wsgi.application'
 
 # settings.py
 
+SECRET_KEY = config('SECRET_KEY')
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres.tiyxcqjeitreicgmtmdy', # Note que o usuário mudou (tem o ID do projeto)
-        'PASSWORD': 'Bravo0208#####', # Coloque a senha que você definiu lá no começo
-        'HOST': 'aws-1-us-east-1.pooler.supabase.com',
-        'PORT': '6543', # A porta do pooler é 6543, não 5432
+        # ...
+        'PASSWORD': config('DB_PASSWORD'),
     }
 }
 
