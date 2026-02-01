@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from decouple import config
 
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,8 +20,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-i2zz6s=q*j$c5b@ckvd(o@jmc&fy43laynfc&-wx2j#qc(t0hq'
+# A chave agora vem do arquivo .env (Seguro)
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -76,13 +75,14 @@ WSGI_APPLICATION = 'saas_sst.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# settings.py
-
-SECRET_KEY = config('SECRET_KEY')
 DATABASES = {
     'default': {
-        # ...
-        'PASSWORD': config('DB_PASSWORD'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres.tiyxcqjeitreicgmtmdy',
+        'PASSWORD': config('DB_PASSWORD'), # Senha lida do arquivo .env
+        'HOST': 'aws-1-us-east-1.pooler.supabase.com',
+        'PORT': '6543',
     }
 }
 
