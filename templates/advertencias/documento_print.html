@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Advertência - {{ adv.funcionario.nome }}</title>
+    <style>
+        body { font-family: 'Times New Roman', serif; padding: 40px; max-width: 800px; margin: auto; }
+        h1 { text-align: center; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .content { font-size: 14pt; line-height: 1.6; text-align: justify; margin-bottom: 50px; }
+        .signatures { margin-top: 100px; display: flex; justify-content: space-between; }
+        .sig-box { text-align: center; width: 45%; border-top: 1px solid #000; padding-top: 10px; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <button class="no-print" onclick="window.print()" style="padding: 10px 20px; font-size: 16px; margin-bottom: 20px;">🖨️ Imprimir Documento</button>
+
+    <div class="header">
+        <h2>{{ empresa.nome_fantasia }}</h2>
+        <p>CNPJ: {{ empresa.cnpj }}</p>
+    </div>
+
+    <h1>Advertência Disciplinar</h1>
+
+    <div class="content">
+        <p>Ao Sr.(a) <strong>{{ adv.funcionario.nome }}</strong>,</p>
+        <p>Cargo: {{ adv.funcionario.cargo }}</p>
+
+        <p>
+            Vimos por meio desta aplicar-lhe a presente <strong>ADVERTÊNCIA DISCIPLINAR</strong> em razão da falta cometida no dia 
+            <strong>{{ adv.data_incidente|date:"d/m/Y" }}</strong>, caracterizada por:
+        </p>
+
+        <p style="background: #f0f0f0; padding: 15px; border-left: 4px solid #333;">
+            <strong>MOTIVO: {{ adv.tipo.titulo }}</strong><br>
+            <em>{{ adv.tipo.descricao_padrao|default:adv.detalhes }}</em>
+        </p>
+
+        {% if adv.reincidente %}
+        <p><strong>⚠️ ATENÇÃO:</strong> Consta em nossos registros que esta não é a primeira ocorrência desta natureza (Reincidência).</p>
+        {% endif %}
+
+        <p>
+            Esclarecemos que a reiteração de faltas desta natureza ou de qualquer outra prevista em lei poderá ensejar medidas mais drásticas, 
+            incluindo suspensão ou até mesmo demissão por justa causa, conforme artigo 482 da CLT.
+        </p>
+
+        <p style="text-align: right; margin-top: 40px;">
+            {{ empresa.endereco }} <br>
+            Data de Emissão: {% now "d \d\e F \d\e Y" %}
+        </p>
+    </div>
+
+    <div class="signatures">
+        <div class="sig-box">
+            {{ empresa.nome_fantasia }}<br>
+            <strong>Empregador</strong>
+        </div>
+        <div class="sig-box">
+            {{ adv.funcionario.nome }}<br>
+            <strong>Empregado(a)</strong>
+        </div>
+    </div>
+</body>
+</html>

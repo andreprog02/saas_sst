@@ -1,0 +1,94 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>📜 Histórico: {{ extintor.codigo_patrimonial }}</h3>
+        <div>
+            <a href="{% url 'registrar_inspecao' extintor.id %}" class="btn btn-success">➕ Nova Inspeção</a>
+            <a href="{% url 'dashboard_extintores' %}" class="btn btn-secondary">Voltar ao Painel</a>
+        </div>
+    </div>
+
+    <div class="card p-3 mb-4 bg-light border">
+        <div class="row">
+            <div class="col-md-3"><strong>Local:</strong> {{ extintor.localizacao.nome }}</div>
+            <div class="col-md-3"><strong>Tipo:</strong> {{ extintor.get_agente_display }}</div>
+            <div class="col-md-3"><strong>Última Recarga:</strong> {{ extintor.data_ultima_manutencao|date:"d/m/Y" }}</div>
+            <div class="col-md-3">
+                <strong>Próxima Recarga:</strong> 
+                {% if extintor.alerta_manutencao %}
+                    <span class="text-danger fw-bold">{{ extintor.data_proxima_manutencao|date:"d/m/Y" }} (Vence logo!)</span>
+                {% else %}
+                    <span class="text-success">{{ extintor.data_proxima_manutencao|date:"d/m/Y" }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+            Inspeções Mensais Realizadas
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">Data</th>
+                        <th style="width: 15%;">Responsável</th>
+                        <th class="text-center">Lacre</th>
+                        <th class="text-center">Pressão</th>
+                        <th class="text-center">Sinal.</th>
+                        <th class="text-center">Acesso</th>
+                        <th class="text-center">Mangueira</th>
+                        <th style="width: 15%;">Evidências</th>
+                        <th>Observações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for insp in inspecoes %}
+                    <tr>
+                        <td><strong>{{ insp.data_inspecao|date:"d/m/Y" }}</strong></td>
+                        <td>{{ insp.responsavel }}</td>
+                        
+                        <td class="text-center">{{ insp.lacre_intacto|yesno:"✅,🔴" }}</td>
+                        <td class="text-center">{{ insp.manometro_pressao_ok|yesno:"✅,🔴" }}</td>
+                        <td class="text-center">{{ insp.sinalizacao_visivel|yesno:"✅,🔴" }}</td>
+                        <td class="text-center">{{ insp.acesso_livre|yesno:"✅,🔴" }}</td>
+                        <td class="text-center">{{ insp.mangueira_integra|yesno:"✅,🔴" }}</td>
+                        
+                        <td>
+                            {% if insp.fotos.all %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for foto in insp.fotos.all %}
+                                        <a href="{{ foto.imagem.url }}" target="_blank">
+                                            <img src="{{ foto.imagem.url }}" 
+                                                 class="img-thumbnail" 
+                                                 style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" 
+                                                 title="Clique para ampliar">
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+
+                        <td><small class="text-muted">{{ insp.observacoes|default:"-" }}</small></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center p-4 text-muted">
+                            Nenhuma inspeção registrada para este extintor até o momento.
+                            <br>
+                            <a href="{% url 'registrar_inspecao' extintor.id %}" class="fw-bold text-success">Clique aqui para realizar a primeira inspeção</a>.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

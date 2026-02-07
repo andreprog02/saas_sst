@@ -1,0 +1,92 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Painel de Advertências Disciplinares</h2>
+        <div>
+            <a href="{% url 'config_advertencias' %}" class="btn btn-secondary">⚙️ Configurar Motivos</a>
+            <a href="{% url 'nova_advertencia' %}" class="btn btn-warning">📝 Nova Advertência</a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h5>Por Setor</h5>
+                <ul class="list-group list-group-flush">
+                    {% for item in por_setor %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        {{ item.funcionario__setor__nome|default:"Sem Setor" }}
+                        <span class="badge bg-primary">{{ item.total }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h5>Principais Motivos</h5>
+                <ul class="list-group list-group-flush">
+                    {% for item in por_tipo %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        {{ item.tipo__titulo }}
+                        <span class="badge bg-danger">{{ item.total }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h5>Evolução Mensal</h5>
+                <ul class="list-group list-group-flush">
+                    {% for item in por_mes %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        {{ item.mes|date:"M/Y" }}
+                        <span class="badge bg-secondary">{{ item.total }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Histórico Geral</div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Funcionário</th>
+                        <th>Motivo</th>
+                        <th>Reincidente?</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for adv in advertencias %}
+                    <tr>
+                        <td>{{ adv.data_incidente|date:"d/m/Y" }}</td>
+                        <td>{{ adv.funcionario.nome }}</td>
+                        <td>{{ adv.tipo.titulo }}</td>
+                        <td>
+                            {% if adv.reincidente %}
+                                <span class="badge bg-danger">SIM</span>
+                            {% else %}
+                                <span class="badge bg-success">NÃO</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'imprimir_advertencia' adv.pk %}" target="_blank" class="btn btn-sm btn-outline-dark">🖨️ Doc</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5">Nenhum registro encontrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

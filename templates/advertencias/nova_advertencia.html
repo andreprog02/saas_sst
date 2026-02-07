@@ -1,0 +1,15 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card p-4 mx-auto" style="max-width: 600px;">
+        <h3>⚠️ Nova Advertência</h3>
+        <p>Selecione o funcionário e o motivo. O sistema verificará reincidências automaticamente.</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-warning w-100">Registrar e Gerar Documento</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,9 +1,18 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.db import transaction
-# Importamos os novos modelos aqui
-from .models import Empresa, Funcionario, Setor, NormaRegulamentadora, EPI, TipoEPI, Localizacao
+from .models import (
+    Empresa, Funcionario, Setor, NormaRegulamentadora, 
+    EPI, TipoEPI, Localizacao, Vacina, 
+    Advertencia, TipoAdvertencia,
+    Extintor, InspecaoExtintor
+)
 
+# --- WIDGET CUSTOMIZADO PARA MÚLTIPLOS ARQUIVOS ---
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+# 1. CADASTRO DE EMPRESA
 class CadastroSaaSForm(forms.Form):
     username = forms.CharField(label="Seu Nome", max_length=150)
     email_login = forms.EmailField(label="E-mail de Login")
@@ -33,6 +42,13 @@ class CadastroSaaSForm(forms.Form):
             PerfilUsuario.objects.create(usuario=user, empresa=empresa, is_admin=True)
             return user
 
+# 2. SETORES E VACINAS
+class VacinaForm(forms.ModelForm):
+    class Meta:
+        model = Vacina
+        fields = ['nome', 'descricao']
+        widgets = {'descricao': forms.Textarea(attrs={'rows': 2})}
+
 class SetorForm(forms.ModelForm):
     nrs_obrigatorias = forms.ModelMultipleChoiceField(
         queryset=NormaRegulamentadora.objects.all(),
@@ -40,15 +56,27 @@ class SetorForm(forms.ModelForm):
         required=False,
         label="NRs Aplicáveis"
     )
+    vacinas_padrao = forms.ModelMultipleChoiceField(
+        queryset=Vacina.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Vacinas Exigidas"
+    )
+
     class Meta:
         model = Setor
-        fields = ['nome', 'nrs_obrigatorias', 'epis_obrigatorios', 'vacinas_necessarias', 'treinamentos']
+        fields = ['nome', 'nrs_obrigatorias', 'vacinas_padrao', 'epis_obrigatorios', 'treinamentos']
         widgets = {
             'epis_obrigatorios': forms.Textarea(attrs={'rows': 2}),
-            'vacinas_necessarias': forms.Textarea(attrs={'rows': 2}),
             'treinamentos': forms.Textarea(attrs={'rows': 2}),
         }
 
+    def __init__(self, user_empresa=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user_empresa:
+            self.fields['vacinas_padrao'].queryset = Vacina.objects.filter(empresa=user_empresa)
+
+# 3. FUNCIONÁRIOS
 class FuncionarioForm(forms.ModelForm):
     class Meta:
         model = Funcionario
@@ -60,7 +88,7 @@ class FuncionarioForm(forms.ModelForm):
         if empresa_id:
             self.fields['setor'].queryset = Setor.objects.filter(empresa_id=empresa_id)
 
-# --- AQUI ESTÁ A CORREÇÃO PRINCIPAL ---
+# 4. EPIs
 class TipoEPIForm(forms.ModelForm):
     class Meta:
         model = TipoEPI
@@ -74,7 +102,6 @@ class LocalizacaoForm(forms.ModelForm):
 class EPIForm(forms.ModelForm):
     class Meta:
         model = EPI
-        # AGORA USAMOS OS CAMPOS CERTOS: 'tipo' e 'local'
         fields = ['tipo', 'local', 'codigo_unico', 'tamanho', 'ca', 'quantidade', 'data_validade']
         widgets = {'data_validade': forms.DateInput(attrs={'type': 'date'})}
 
@@ -83,3 +110,58 @@ class EPIForm(forms.ModelForm):
         if empresa_id:
             self.fields['tipo'].queryset = TipoEPI.objects.filter(empresa_id=empresa_id)
             self.fields['local'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+
+# 5. ADVERTÊNCIAS
+class TipoAdvertenciaForm(forms.ModelForm):
+    class Meta:
+        model = TipoAdvertencia
+        fields = ['titulo', 'descricao_padrao']
+        widgets = {'descricao_padrao': forms.Textarea(attrs={'rows': 4})}
+
+class AdvertenciaForm(forms.ModelForm):
+    class Meta:
+        model = Advertencia
+        fields = ['funcionario', 'tipo', 'data_incidente', 'detalhes']
+        widgets = {
+            'data_incidente': forms.DateInput(attrs={'type': 'date'}),
+            'detalhes': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['funcionario'].queryset = Funcionario.objects.filter(empresa_id=empresa_id, ativo=True)
+            self.fields['tipo'].queryset = TipoAdvertencia.objects.filter(empresa_id=empresa_id)
+
+# 6. EXTINTORES
+class ExtintorForm(forms.ModelForm):
+    class Meta:
+        model = Extintor
+        exclude = ['empresa']
+        widgets = {
+            'data_ultima_manutencao': forms.DateInput(attrs={'type': 'date'}),
+            'data_proxima_manutencao': forms.DateInput(attrs={'type': 'date'}),
+            'data_teste_hidrostatico': forms.DateInput(attrs={'type': 'date'}),
+        }
+    
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+
+class InspecaoExtintorForm(forms.ModelForm):
+    # Usamos o widget customizado aqui
+    fotos = forms.FileField(
+        widget=MultipleFileInput(attrs={'multiple': True}),
+        label="Evidências Fotográficas",
+        required=False
+    )
+
+    class Meta:
+        model = InspecaoExtintor
+        fields = ['data_inspecao', 'responsavel', 'lacre_intacto', 'manometro_pressao_ok', 
+                  'sinalizacao_visivel', 'acesso_livre', 'mangueira_integra', 'observacoes', 'fotos']
+        widgets = {
+            'data_inspecao': forms.DateInput(attrs={'type': 'date'}),
+            'observacoes': forms.Textarea(attrs={'rows': 2}),
+        }

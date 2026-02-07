@@ -1,0 +1,179 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3 h-100">
+                <div class="card-body">
+                    <h5 class="card-title display-6 fw-bold">{{ total_ativos }}</h5>
+                    <p class="card-text">Extintores Ativos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3 h-100">
+                <div class="card-body">
+                    <h5 class="card-title display-6 fw-bold">{{ vencendo_recarga }}</h5>
+                    <p class="card-text">Vencendo Recarga (30 dias)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger mb-3 h-100">
+                <div class="card-body">
+                    <h5 class="card-title display-6 fw-bold">{{ vencendo_hidro }}</h5>
+                    <p class="card-text">Vencendo Teste Hidro.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info mb-3 h-100">
+                <div class="card-body">
+                    <h5 class="card-title display-6 fw-bold">{{ qtd_pendente_inspecao }}</h5>
+                    <p class="card-text">Sem Inspeção Mensal</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="text-primary"><i class="bi bi-fire"></i> Gestão de Extintores</h3>
+        <div>
+            <a href="{% url 'exportar_extintores' %}" class="btn btn-outline-success">📊 Baixar Excel</a>
+            <a href="{% url 'criar_extintor' %}" class="btn btn-primary fw-bold">+ Novo Extintor</a>
+        </div>
+    </div>
+
+    <div class="card mb-4 p-3 bg-light border-0">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <input type="text" name="search" class="form-control" placeholder="🔍 Buscar por Patrimônio ou Local..." value="{{ request.GET.search }}">
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">Todos os Status</option>
+                    <option value="ATIVO" {% if request.GET.status == 'ATIVO' %}selected{% endif %}>Ativos</option>
+                    <option value="MANUTENCAO" {% if request.GET.status == 'MANUTENCAO' %}selected{% endif %}>Em Manutenção</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-secondary w-100">Filtrar</button>
+            </div>
+            <div class="col-md-2">
+                <a href="{% url 'dashboard_extintores' %}" class="btn btn-outline-secondary w-100">Limpar</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Patrimônio</th>
+                        <th>Local</th>
+                        <th>Tipo / Capacidade</th>
+                        <th>Vencimento Recarga</th>
+                        <th>Status</th>
+                        <th class="text-end" style="min-width: 200px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ext in extintores %}
+                    <tr>
+                        <td>
+                            <strong>{{ ext.codigo_patrimonial }}</strong>
+                            <br><small class="text-muted">{{ ext.numero_serie }}</small>
+                        </td>
+                        <td>{{ ext.localizacao.nome }}</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ ext.classe }}</span>
+                            {{ ext.get_agente_display }} - {{ ext.capacidade }}
+                        </td>
+                        <td>
+                            {% if ext.alerta_manutencao %}
+                                <span class="text-danger fw-bold">
+                                    {{ ext.data_proxima_manutencao|date:"d/m/Y" }}
+                                    <i class="bi bi-exclamation-triangle-fill" title="Vence em breve!"></i>
+                                </span>
+                            {% else %}
+                                <span class="text-success">{{ ext.data_proxima_manutencao|date:"d/m/Y" }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ext.situacao == 'ATIVO' %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% elif ext.situacao == 'MANUTENCAO' %}
+                                <span class="badge bg-warning text-dark">Manutenção</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ ext.get_situacao_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'registrar_inspecao' ext.id %}" class="btn btn-sm btn-outline-success" title="Checklist Mensal">
+                                    ✅
+                                </a>
+                                <a href="{% url 'historico_extintor' ext.id %}" class="btn btn-sm btn-outline-secondary" title="Histórico">
+                                    📜
+                                </a>
+                                <a href="{% url 'editar_extintor' ext.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                    ✏️
+                                </a>
+                                <button type="button" class="btn btn-sm btn-dark" data-bs-toggle="modal" data-bs-target="#modalQR{{ ext.id }}" title="Gerar Etiqueta">
+                                    📱 QR
+                                </button>
+                            </div>
+
+                            <div class="modal fade" id="modalQR{{ ext.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content text-center">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Etiqueta: {{ ext.codigo_patrimonial }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p class="text-muted small mb-2">Imprima e cole no corpo do extintor para acesso rápido.</p>
+                                            
+                                            <div class="border p-3 d-inline-block rounded bg-white">
+                                                <img src="{% url 'gerar_qrcode' ext.id %}" class="img-fluid" style="max-width: 200px; height: auto;">
+                                            </div>
+                                            
+                                            <h5 class="mt-3 fw-bold">{{ ext.localizacao.nome }}</h5>
+                                            <p class="mb-0 badge bg-secondary">{{ ext.get_agente_display }}</p>
+                                        </div>
+                                        <div class="modal-footer justify-content-center">
+                                            <button type="button" class="btn btn-primary" onclick="window.print()">
+                                                🖨️ Imprimir Página
+                                            </button>
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <h4>Nenhum extintor encontrado.</h4>
+                            <p>Cadastre novos equipamentos ou ajuste os filtros.</p>
+                            <a href="{% url 'criar_extintor' %}" class="btn btn-primary mt-2">Cadastrar Agora</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+</script>
+{% endblock %}

@@ -17,7 +17,7 @@
             font-family: inherit;
         }
 
-        /* --- Estilo Especial para a Lista de NRs --- */
+        /* --- Estilo Especial para a Lista de NRs e Vacinas --- */
         .checkbox-container {
             max-height: 200px; /* Altura máxima da caixa */
             overflow-y: auto;  /* Barra de rolagem se passar da altura */
@@ -37,6 +37,15 @@
             margin-right: 10px;
             width: auto; /* Checkbox não pode ser width 100% */
         }
+        
+        /* Link dentro do container vazio */
+        .empty-link {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .empty-link:hover { text-decoration: underline; }
+
         /* ------------------------------------------ */
 
         button { background: #007bff; color: white; padding: 12px; border: none; width: 100%; font-size: 16px; cursor: pointer; border-radius: 4px; margin-top: 20px; font-weight: bold;}
@@ -60,14 +69,24 @@
                 {{ form.nrs_obrigatorias }}
             </div>
             
-            <label>EPIs Obrigatórios:</label>
+            <label>EPIs Obrigatórios (Texto Livre):</label>
             {{ form.epis_obrigatorios }}
 
             <label>Treinamentos Necessários:</label>
             {{ form.treinamentos }}
 
-            <label>Vacinas:</label>
-            {{ form.vacinas_necessarias }}
+            <label>Vacinas Obrigatórias:</label>
+            <div class="checkbox-container">
+                {% if form.vacinas_padrao.field.queryset.exists %}
+                    {{ form.vacinas_padrao }}
+                {% else %}
+                    <div style="padding: 15px; text-align: center; color: #888; font-size: 0.9rem;">
+                        Nenhuma vacina cadastrada no sistema.<br>
+                        <a href="{% url 'gerenciar_vacinas' %}" target="_blank" class="empty-link">Clique aqui para cadastrar vacinas</a>
+                    </div>
+                {% endif %}
+            </div>
+            <small style="color: #888; display: block; margin-top: 5px;">Selecione as vacinas exigidas para este setor.</small>
 
             <button type="submit">Salvar Setor</button>
             <a href="{% url 'dashboard' %}" class="btn-back">Cancelar</a>

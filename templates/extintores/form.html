@@ -1,0 +1,42 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Extintor</h4>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-4 mb-3">{{ form.codigo_patrimonial.label_tag }} {{ form.codigo_patrimonial }}</div>
+                    <div class="col-md-4 mb-3">{{ form.numero_serie.label_tag }} {{ form.numero_serie }}</div>
+                    <div class="col-md-4 mb-3">{{ form.situacao.label_tag }} {{ form.situacao }}</div>
+                    
+                    <div class="col-md-6 mb-3">{{ form.localizacao.label_tag }} {{ form.localizacao }}</div>
+                    <div class="col-md-6 mb-3">{{ form.classe_risco.label_tag }} {{ form.classe_risco }}</div>
+                    
+                    <div class="col-md-3 mb-3">{{ form.classe.label_tag }} {{ form.classe }}</div>
+                    <div class="col-md-3 mb-3">{{ form.agente.label_tag }} {{ form.agente }}</div>
+                    <div class="col-md-3 mb-3">{{ form.capacidade.label_tag }} {{ form.capacidade }}</div>
+                    <div class="col-md-3 mb-3">{{ form.altura_instalacao.label_tag }} {{ form.altura_instalacao }}</div>
+
+                    <h5 class="mt-3 border-bottom">Manutenção</h5>
+                    <div class="col-md-4 mb-3">{{ form.data_ultima_manutencao.label_tag }} {{ form.data_ultima_manutencao }}</div>
+                    <div class="col-md-4 mb-3">{{ form.data_proxima_manutencao.label_tag }} {{ form.data_proxima_manutencao }}</div>
+                    <div class="col-md-4 mb-3">{{ form.data_teste_hidrostatico.label_tag }} {{ form.data_teste_hidrostatico }}</div>
+                    
+                    <div class="col-md-6 mb-3">{{ form.empresa_mantenedora.label_tag }} {{ form.empresa_mantenedora }}</div>
+                    <div class="col-md-6 mb-3">{{ form.numero_lacre.label_tag }} {{ form.numero_lacre }}</div>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100 mt-3">Salvar Extintor</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    document.querySelectorAll('input, select').forEach(e => e.classList.add('form-control'));
+    document.querySelectorAll('input[type="checkbox"]').forEach(e => e.classList.remove('form-control'));
+</script>
+{% endblock %}

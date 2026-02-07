@@ -1,0 +1,54 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4 row">
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h4>Novo Motivo de Advertência</h4>
+            <p class="text-muted small">Cadastre os tipos de faltas (ex: Atraso, Insubordinação, EPI).</p>
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-success w-100">Salvar Motivo</button>
+            </form>
+            <a href="{% url 'dashboard_advertencias' %}" class="btn btn-link mt-2 w-100">Voltar para Painel</a>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card p-3">
+            <h4>Motivos Cadastrados</h4>
+            
+            {% if tipos %}
+                <ul class="list-group mt-3">
+                    {% for tipo in tipos %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>{{ tipo.titulo }}</strong>
+                        </div>
+                        {% if tipo.descricao_padrao %}
+                            <small class="text-muted d-block mt-1">
+                                📝 <em>{{ tipo.descricao_padrao|truncatechars:100 }}</em>
+                            </small>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="alert alert-info mt-3">
+                    Nenhum motivo de advertência cadastrado ainda. Use o formulário ao lado para criar o primeiro.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Pequeno ajuste visual para os campos do Django ficarem bonitos no Bootstrap
+    var inputs = document.querySelectorAll('input[type="text"], textarea');
+    inputs.forEach(function(input) {
+        input.classList.add('form-control');
+        input.style.marginBottom = '15px';
+    });
+</script>
+{% endblock %}

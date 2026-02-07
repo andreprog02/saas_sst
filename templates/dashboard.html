@@ -58,7 +58,7 @@
 
         /* --- Conteúdo Principal --- */
         .container {
-            max-width: 1000px;
+            max-width: 1200px; /* Aumentei um pouco para caber 4 cards */
             margin: 40px auto;
             padding: 0 20px;
         }
@@ -91,6 +91,8 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             transition: transform 0.2s;
             height: 100%; /* Garante altura igual */
+            display: flex;
+            flex-direction: column;
         }
         .card-custom:hover {
             transform: translateY(-2px);
@@ -101,6 +103,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            margin-bottom: 20px;
         }
 
         /* --- Botões de Ação (Menu) --- */
@@ -108,6 +111,7 @@
             list-style: none;
             padding: 0;
             margin: 0;
+            flex-grow: 1; /* Ocupa espaço restante */
         }
         .action-list li {
             margin-bottom: 10px;
@@ -117,7 +121,7 @@
             align-items: center;
             justify-content: space-between;
             background-color: #f8f9fa;
-            padding: 15px;
+            padding: 12px 15px;
             border-radius: 6px;
             text-decoration: none;
             color: #333;
@@ -128,9 +132,17 @@
         .btn-action:hover {
             background-color: #e9ecef;
             border-left-color: #007bff;
+            text-decoration: none;
+            color: #007bff;
         }
         .btn-action span {
             font-size: 1.2rem;
+        }
+        .btn-action small {
+            display: block;
+            font-size: 0.75rem;
+            color: #666;
+            font-weight: normal;
         }
         
         /* Links sem decoração */
@@ -193,13 +205,13 @@
             </div>
 
             <div class="card-custom">
-                <h3>🚀 Ações Rápidas</h3>
+                <h3>🚀 Cadastros</h3>
                 <ul class="action-list">
                     <li>
                         <a href="{% url 'criar_setor' %}" class="btn-action">
                             <div>
-                                <strong>Criar Setores</strong>
-                                <div style="font-size:0.8rem; color:#666;">Definir EPIs, NRs e Treinamentos</div>
+                                <strong>Criar Setor</strong>
+                                <small>Definir EPIs, NRs e Riscos</small>
                             </div>
                             <span>🏭</span>
                         </a>
@@ -208,33 +220,86 @@
                         <a href="{% url 'criar_funcionario' %}" class="btn-action">
                             <div>
                                 <strong>Novo Funcionário</strong>
-                                <div style="font-size:0.8rem; color:#666;">Cadastrar admissão e vincular setor</div>
+                                <small>Admissão e vínculo com setor</small>
                             </div>
                             <span>👤</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'criar_epi' %}" class="btn-action">
+                            <div>
+                                <strong>Novo EPI</strong>
+                                <small>Entrada no estoque</small>
+                            </div>
+                            <span>➕</span>
                         </a>
                     </li>
                 </ul>
             </div>
 
             <div class="card-custom">
-                <h3>📊 Gestão</h3>
+                <h3>📊 Gestão Operacional</h3>
                 <ul class="action-list">
                     <li>
                         <a href="{% url 'lista_funcionarios' %}" class="btn-action">
-                            Listar Funcionários
+                            Funcionários
                             <span>📋</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'lista_epis' %}" class="btn-action">
-                            Gerenciar Estoque de EPIs
+                            Estoque de EPIs
                             <span>🦺</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard_extintores' %}" class="btn-action">
+                            <strong>Extintores</strong>
+                            <span>🧯</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard_advertencias' %}" class="btn-action">
+                            <strong>Advertências</strong>
+                            <span>⚠️</span>
                         </a>
                     </li>
                 </ul>
             </div>
 
-        </div> </div> {% endblock %}
+            <div class="card-custom">
+                <h3>⚙️ Configurações</h3>
+                <ul class="action-list">
+                    <li>
+                        <a href="{% url 'gerenciar_vacinas' %}" class="btn-action">
+                            Vacinas Obrigatórias
+                            <span>💉</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'gerenciar_tipos' %}" class="btn-action">
+                            Tipos de EPI
+                            <span>helmet</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'gerenciar_locais' %}" class="btn-action">
+                            Locais / Almoxarifado
+                            <span>📍</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'config_advertencias' %}" class="btn-action">
+                            Motivos de Advertência
+                            <span>📝</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+        </div> 
+    </div> 
+    {% endblock %}
     
     <footer>
         &copy; 2026 Sistema SST - Versão 1.0

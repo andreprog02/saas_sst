@@ -1,0 +1,61 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4 row">
+    <div class="col-md-4">
+        <div class="card p-3 mb-3">
+            <h4>💉 Nova Vacina</h4>
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-success w-100">Salvar Manualmente</button>
+            </form>
+        </div>
+
+        <div class="card p-3 bg-light border-info">
+            <h5>💡 Sugestões</h5>
+            <p class="small text-muted">Preencher com as vacinas ocupacionais mais comuns (Tétano, Hepatite, etc).</p>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="importar_padrao" value="true">
+                <button type="submit" class="btn btn-info w-100 text-white">Importar Vacinas Padrão</button>
+            </form>
+        </div>
+        
+        <a href="{% url 'dashboard' %}" class="btn btn-link mt-2 w-100">Voltar ao Dashboard</a>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card p-3">
+            <h4>Vacinas Cadastradas</h4>
+            {% if vacinas %}
+                <ul class="list-group mt-3">
+                    {% for v in vacinas %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ v.nome }}</strong>
+                            <br><small class="text-muted">{{ v.descricao }}</small>
+                        </div>
+                        
+                        <form method="post" onsubmit="return confirm('Excluir esta vacina?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="delete_id" value="{{ v.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="alert alert-warning mt-3">
+                    Nenhuma vacina cadastrada. Clique em "Importar Vacinas Padrão" para começar rápido!
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    var inputs = document.querySelectorAll('input[type="text"], textarea');
+    inputs.forEach(i => i.classList.add('form-control'));
+</script>
+{% endblock %}
