@@ -1,19 +1,36 @@
 from django import forms
 from django.contrib.auth.models import User
-from .models import Equipamento, InspecaoEquipamento
+import os
 from django.db import transaction
 from .models import (
     Empresa, Funcionario, Setor, NormaRegulamentadora, 
     EPI, TipoEPI, Localizacao, Vacina, 
     Advertencia, TipoAdvertencia,
-    Extintor, InspecaoExtintor
+    Extintor, InspecaoExtintor,
+    Equipamento, InspecaoEquipamento,
+    ControleVacina, EntregaEPI, TreinamentoFuncionario,
+    # Novos modelos
+    Afastamento, AcidenteTrabalho
 )
 
-# --- WIDGET CUSTOMIZADO PARA MÚLTIPLOS ARQUIVOS ---
+# --- WIDGETS ---
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
 
-# 1. CADASTRO DE EMPRESA
+class MultipleFileField(forms.FileField):
+    def to_python(self, data):
+        if not data: return None
+        if not isinstance(data, list):
+            if hasattr(data, 'chunks'): return [data]
+            return None
+        return data
+
+    def clean(self, data, initial=None):
+        if not data and self.required:
+            raise forms.ValidationError(self.error_messages['required'], code='required')
+        return data
+
+# 1. EMPRESA
 class CadastroSaaSForm(forms.Form):
     username = forms.CharField(label="Seu Nome", max_length=150)
     email_login = forms.EmailField(label="E-mail de Login")
@@ -47,42 +64,40 @@ class CadastroSaaSForm(forms.Form):
 class VacinaForm(forms.ModelForm):
     class Meta:
         model = Vacina
-        fields = ['nome', 'descricao']
+        fields = ['nome', 'descricao', 'meses_reforco']
         widgets = {'descricao': forms.Textarea(attrs={'rows': 2})}
 
 class SetorForm(forms.ModelForm):
     nrs_obrigatorias = forms.ModelMultipleChoiceField(
-        queryset=NormaRegulamentadora.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        required=False,
-        label="NRs Aplicáveis"
+        queryset=NormaRegulamentadora.objects.all(), widget=forms.CheckboxSelectMultiple, required=False, label="NRs Aplicáveis"
     )
     vacinas_padrao = forms.ModelMultipleChoiceField(
-        queryset=Vacina.objects.none(),
-        widget=forms.CheckboxSelectMultiple,
-        required=False,
-        label="Vacinas Exigidas"
+        queryset=Vacina.objects.none(), widget=forms.CheckboxSelectMultiple, required=False, label="Vacinas Exigidas"
+    )
+    epis_obrigatorios = forms.ModelMultipleChoiceField(
+        queryset=TipoEPI.objects.none(), widget=forms.CheckboxSelectMultiple, required=False, label="EPIs Obrigatórios (Tipos)"
     )
 
     class Meta:
         model = Setor
         fields = ['nome', 'nrs_obrigatorias', 'vacinas_padrao', 'epis_obrigatorios', 'treinamentos']
-        widgets = {
-            'epis_obrigatorios': forms.Textarea(attrs={'rows': 2}),
-            'treinamentos': forms.Textarea(attrs={'rows': 2}),
-        }
+        widgets = {'treinamentos': forms.Textarea(attrs={'rows': 2})}
 
     def __init__(self, user_empresa=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if user_empresa:
             self.fields['vacinas_padrao'].queryset = Vacina.objects.filter(empresa=user_empresa)
+            self.fields['epis_obrigatorios'].queryset = TipoEPI.objects.filter(empresa=user_empresa)
 
 # 3. FUNCIONÁRIOS
 class FuncionarioForm(forms.ModelForm):
     class Meta:
         model = Funcionario
-        fields = ['nome', 'cpf', 'cargo', 'setor', 'data_admissao']
-        widgets = {'data_admissao': forms.DateInput(attrs={'type': 'date'})}
+        fields = ['nome', 'cpf', 'cargo', 'setor', 'data_admissao', 'situacao', 'motivo_afastamento', 'ativo']
+        widgets = {
+            'data_admissao': forms.DateInput(attrs={'type': 'date'}),
+            'motivo_afastamento': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Detalhes...'}),
+        }
 
     def __init__(self, empresa_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -134,6 +149,20 @@ class AdvertenciaForm(forms.ModelForm):
             self.fields['funcionario'].queryset = Funcionario.objects.filter(empresa_id=empresa_id, ativo=True)
             self.fields['tipo'].queryset = TipoAdvertencia.objects.filter(empresa_id=empresa_id)
 
+class AdvertenciaFuncionarioForm(forms.ModelForm):
+    class Meta:
+        model = Advertencia
+        exclude = ['empresa', 'funcionario', 'reincidente', 'criado_em']
+        widgets = {
+            'data_incidente': forms.DateInput(attrs={'type': 'date'}),
+            'detalhes': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['tipo'].queryset = TipoAdvertencia.objects.filter(empresa_id=empresa_id)
+
 # 6. EXTINTORES
 class ExtintorForm(forms.ModelForm):
     class Meta:
@@ -151,30 +180,20 @@ class ExtintorForm(forms.ModelForm):
             self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
 
 class InspecaoExtintorForm(forms.ModelForm):
-    # Usamos o widget customizado aqui
-    fotos = forms.FileField(
-        widget=MultipleFileInput(attrs={'multiple': True}),
-        label="Evidências Fotográficas",
-        required=False
+    fotos = MultipleFileField(
+        widget=MultipleFileInput(attrs={'multiple': True}), label="Evidências Fotográficas", required=False
     )
-
     class Meta:
         model = InspecaoExtintor
-        fields = ['data_inspecao', 'responsavel', 'lacre_intacto', 'manometro_pressao_ok', 
-                  'sinalizacao_visivel', 'acesso_livre', 'mangueira_integra', 'observacoes', 'fotos']
-        widgets = {
-            'data_inspecao': forms.DateInput(attrs={'type': 'date'}),
-            'observacoes': forms.Textarea(attrs={'rows': 2}),
-        }
+        fields = ['data_inspecao', 'responsavel', 'lacre_intacto', 'manometro_pressao_ok', 'sinalizacao_visivel', 'acesso_livre', 'mangueira_integra', 'observacoes', 'fotos']
+        widgets = {'data_inspecao': forms.DateInput(attrs={'type': 'date'}), 'observacoes': forms.Textarea(attrs={'rows': 2})}
 
+# 7. OUTROS EQUIPAMENTOS
 class EquipamentoForm(forms.ModelForm):
     class Meta:
         model = Equipamento
         fields = ['tipo', 'nome', 'localizacao', 'data_instalacao', 'data_validade', 'especificacao', 'imagem']
-        widgets = {
-            'data_instalacao': forms.DateInput(attrs={'type': 'date'}),
-            'data_validade': forms.DateInput(attrs={'type': 'date'}),
-        }
+        widgets = {'data_instalacao': forms.DateInput(attrs={'type': 'date'}), 'data_validade': forms.DateInput(attrs={'type': 'date'})}
 
     def __init__(self, empresa_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -182,17 +201,63 @@ class EquipamentoForm(forms.ModelForm):
             self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
 
 class InspecaoEquipamentoForm(forms.ModelForm):
-    # Campo novo para múltiplos arquivos
-    arquivos = forms.FileField(
-        widget=MultipleFileInput(attrs={'multiple': True}),
-        label="Evidências (Fotos) e Laudos (PDF)",
-        required=False
+    arquivos = MultipleFileField(
+        widget=MultipleFileInput(attrs={'multiple': True}), label="Evidências", required=False
     )
-
     class Meta:
         model = InspecaoEquipamento
         fields = ['data_inspecao', 'responsavel', 'item_integro', 'acesso_livre', 'sinalizacao_ok', 'teste_funcional', 'observacoes', 'arquivos']
+        widgets = {'data_inspecao': forms.DateInput(attrs={'type': 'date'}), 'observacoes': forms.Textarea(attrs={'rows': 2})}
+
+# 8. PRONTUÁRIO (VACINAS, EPIs, TREINAMENTOS)
+class ControleVacinaForm(forms.ModelForm):
+    class Meta:
+        model = ControleVacina
+        fields = ['vacina', 'data_aplicacao', 'comprovante']
+        widgets = {'data_aplicacao': forms.DateInput(attrs={'type': 'date'})}
+    
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['vacina'].queryset = Vacina.objects.filter(empresa_id=empresa_id)
+
+class EntregaEPIForm(forms.ModelForm):
+    class Meta:
+        model = EntregaEPI
+        fields = ['epi', 'data_entrega', 'quantidade', 'termo_assinado']
+        widgets = {'data_entrega': forms.DateInput(attrs={'type': 'date'})}
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['epi'].queryset = EPI.objects.filter(empresa_id=empresa_id, quantidade__gt=0)
+
+class TreinamentoFuncionarioForm(forms.ModelForm):
+    class Meta:
+        model = TreinamentoFuncionario
+        fields = ['nome_treinamento', 'data_realizacao', 'data_validade', 'certificado']
         widgets = {
-            'data_inspecao': forms.DateInput(attrs={'type': 'date'}),
-            'observacoes': forms.Textarea(attrs={'rows': 2}),
+            'data_realizacao': forms.DateInput(attrs={'type': 'date'}),
+            'data_validade': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+# 9. NOVOS FORMS (AFASTAMENTO E ACIDENTE)
+class AfastamentoForm(forms.ModelForm):
+    class Meta:
+        model = Afastamento
+        fields = ['data_inicio', 'data_retorno', 'motivo', 'laudo']
+        widgets = {
+            'data_inicio': forms.DateInput(attrs={'type': 'date'}),
+            'data_retorno': forms.DateInput(attrs={'type': 'date'}),
+            'motivo': forms.Textarea(attrs={'rows': 3}),
+        }
+
+class AcidenteTrabalhoForm(forms.ModelForm):
+    class Meta:
+        model = AcidenteTrabalho
+        fields = ['data_acidente', 'hora_acidente', 'local', 'descricao_motivo', 'arquivo_evidencia']
+        widgets = {
+            'data_acidente': forms.DateInput(attrs={'type': 'date'}),
+            'hora_acidente': forms.TimeInput(attrs={'type': 'time'}),
+            'descricao_motivo': forms.Textarea(attrs={'rows': 3}),
         }

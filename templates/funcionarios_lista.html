@@ -1,104 +1,87 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Funcionários - SST</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 1rem;
-        }
-        h1 { margin: 0; color: #333; }
-        
-        .btn-add {
-            background-color: #28a745;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        .btn-add:hover { background-color: #218838; }
-        
-        .btn-back {
-            color: #666;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
+{% extends 'dashboard.html' %}
 
-        /* Lista */
-        ul { list-style: none; padding: 0; }
-        li {
-            background: #fff;
-            border: 1px solid #ddd;
-            margin-bottom: 10px;
-            padding: 15px;
-            border-radius: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        li:hover { border-color: #007bff; }
-        
-        .info strong { display: block; font-size: 1.1rem; color: #333; }
-        .info span { color: #666; font-size: 0.9rem; }
-        
-        .empty-state {
-            text-align: center;
-            color: #888;
-            padding: 40px;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <header>
-            <div>
-                <a href="{% url 'dashboard' %}" class="btn-back">← Voltar ao Dashboard</a>
-                <h1>Funcionários</h1>
-            </div>
-            <a href="{% url 'criar_funcionario' %}" class="btn-add">+ Novo Funcionário</a>
-        </header>
-
-        <ul>
-            {% for func in funcionarios %}
-                <li>
-                    <div class="info">
-                        <strong>{{ func.nome }}</strong>
-                        <span>{{ func.cargo }} • Admissão: {{ func.data_admissao|date:"d/m/Y" }}</span>
-                    </div>
-                    <div>
-                        <span style="color: green; font-size: 0.8rem;">● Ativo</span>
-                    </div>
-                </li>
-            {% empty %}
-                <div class="empty-state">
-                    <h3>Nenhum funcionário encontrado</h3>
-                    <p>Cadastre o primeiro funcionário da sua empresa clicando no botão acima.</p>
-                </div>
-            {% endfor %}
-        </ul>
+{% block content %}
+<div class="container mt-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>👥 Funcionários</h2>
+            <p class="text-muted mb-0">Gerencie a equipe e acompanhe a situação de cada colaborador.</p>
+        </div>
+        <div>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary me-2">Voltar</a>
+            <a href="{% url 'criar_funcionario' %}" class="btn btn-success fw-bold">+ Novo Funcionário</a>
+        </div>
     </div>
 
-</body>
-</html>
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Nome / CPF</th>
+                            <th>Cargo / Setor</th>
+                            <th>Admissão</th>
+                            <th>Situação Atual</th>
+                            <th class="text-end pe-4">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for func in funcionarios %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">{{ func.nome }}</div>
+                                <small class="text-muted">{{ func.cpf }}</small>
+                            </td>
+                            <td>
+                                <div class="fw-bold">{{ func.cargo }}</div>
+                                {% if func.setor %}
+                                    <span class="badge bg-light text-dark border">{{ func.setor.nome }}</span>
+                                {% else %}
+                                    <span class="text-muted small">Sem setor definido</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ func.data_admissao|date:"d/m/Y" }}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ func.cor_status }} bg-opacity-75 px-3 py-2 rounded-pill border border-{{ func.cor_status }}">
+                                    {{ func.get_situacao_display }}
+                                </span>
+                                
+                                {% if func.situacao != 'ATIVO' and func.motivo_afastamento %}
+                                    <br>
+                                    <small class="text-muted" style="font-size: 0.75rem;">
+                                        Obs: {{ func.motivo_afastamento|truncatechars:25 }}
+                                    </small>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'editar_funcionario' func.id %}" class="btn btn-sm btn-outline-secondary me-1" title="Editar Cadastro">
+                                    ✏️
+                                </a>
+                                
+                                <a href="{% url 'detalhe_funcionario' func.id %}" class="btn btn-sm btn-primary fw-bold" title="Ver Prontuário Completo">
+                                    📂 Prontuário
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <div class="text-muted">
+                                    <h4>Nenhum funcionário encontrado</h4>
+                                    <p>Cadastre seus colaboradores para gerenciar EPIs, Vacinas e Afastamentos.</p>
+                                    <a href="{% url 'criar_funcionario' %}" class="btn btn-success mt-2">+ Cadastrar Primeiro</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

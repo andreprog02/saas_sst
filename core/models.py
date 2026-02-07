@@ -1,9 +1,8 @@
+import os
 from django.db import models
 from django.contrib.auth.models import User
 from datetime import date, timedelta
 from django.utils import timezone
-
-
 
 # 1. EMPRESA
 class Empresa(models.Model):
@@ -37,36 +36,77 @@ class NormaRegulamentadora(models.Model):
 class Vacina(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     nome = models.CharField(max_length=100, verbose_name="Nome da Vacina")
-    descricao = models.TextField(blank=True, verbose_name="Descrição/Periodicidade")
+    descricao = models.TextField(blank=True, verbose_name="Descrição")
+    meses_reforco = models.IntegerField(default=0, verbose_name="Reforço em (meses)", help_text="0 para dose única ou sem reforço automático")
 
     def __str__(self): return self.nome
 
 # 4. SETOR (Ambiente de Trabalho)
 class Setor(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    nome = models.CharField(max_length=100) # O ERRO ESTAVA AQUI (Se faltar essa linha, quebra)
+    nome = models.CharField(max_length=100)
     
     # Relacionamentos M2M (Muitos para Muitos)
     nrs_obrigatorias = models.ManyToManyField(NormaRegulamentadora, blank=True, verbose_name="NRs Aplicáveis")
     vacinas_padrao = models.ManyToManyField(Vacina, blank=True, verbose_name="Vacinas Obrigatórias")
     
+    # MUDANÇA: EPIs agora são selecionáveis (ligado a TipoEPI)
+    epis_obrigatorios = models.ManyToManyField('TipoEPI', blank=True, verbose_name="EPIs Obrigatórios por Tipo")
+    
     # Campos de Texto Livre
-    epis_obrigatorios = models.TextField(verbose_name="EPIs Obrigatórios", blank=True)
     treinamentos = models.TextField(verbose_name="Treinamentos", blank=True)
 
     def __str__(self): return self.nome
 
 # 5. FUNCIONÁRIO
 class Funcionario(models.Model):
+    # Opções de Situação
+    SITUACAO_CHOICES = [
+        ('ATIVO', '✅ Em Exercício'),
+        ('FERIAS', '🏖️ Férias'),
+        ('AFASTADO', '🏥 Afastado (INSS/Médico)'),
+        ('LICENCA', '👶 Licença Maternidade/Paternidade'),
+        ('SUSPENSO', '⚠️ Suspenso'),
+        ('DESLIGADO', '❌ Desligado'),
+    ]
+
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     nome = models.CharField(max_length=255)
     cpf = models.CharField(max_length=14)
     cargo = models.CharField(max_length=100)
     setor = models.ForeignKey(Setor, on_delete=models.PROTECT, null=True, blank=True, verbose_name="Setor de Trabalho")
     data_admissao = models.DateField(verbose_name="Data de Admissão")
-    ativo = models.BooleanField(default=True)
+    
+    # NOVOS CAMPOS DE SITUAÇÃO
+    situacao = models.CharField(
+        max_length=20, 
+        choices=SITUACAO_CHOICES, 
+        default='ATIVO', 
+        verbose_name="Situação Atual"
+    )
+    motivo_afastamento = models.TextField(
+        blank=True, 
+        verbose_name="Detalhes do Afastamento/Desligamento",
+        help_text="Preencher apenas se estiver afastado ou desligado."
+    )
+    
+    # Mantemos o 'ativo' para lógica interna do sistema (ex: login), mas a 'situacao' é o que manda no RH
+    ativo = models.BooleanField(default=True, verbose_name="Cadastro Ativo no Sistema?")
 
     def __str__(self): return f"{self.nome} - {self.cargo}"
+    
+    @property
+    def cor_status(self):
+        """Retorna a classe de cor do Bootstrap baseada na situação"""
+        mapping = {
+            'ATIVO': 'success',    # Verde
+            'FERIAS': 'info',      # Azul claro
+            'AFASTADO': 'warning', # Amarelo
+            'LICENCA': 'primary',  # Azul
+            'SUSPENSO': 'dark',    # Preto
+            'DESLIGADO': 'danger'  # Vermelho
+        }
+        return mapping.get(self.situacao, 'secondary')
 
 # 6. ESTOQUE DE EPIs
 class TipoEPI(models.Model):
@@ -116,6 +156,65 @@ class Advertencia(models.Model):
 
     def __str__(self): return f"{self.funcionario.nome} - {self.tipo.titulo}"
 
+# 8. NOVOS MODELOS: PRONTUÁRIO DO FUNCIONÁRIO (VACINAS, EPIs, TREINAMENTOS)
+
+# 8.1 CONTROLE DE VACINAS
+class ControleVacina(models.Model):
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='vacinas')
+    vacina = models.ForeignKey(Vacina, on_delete=models.PROTECT)
+    data_aplicacao = models.DateField(verbose_name="Data da Aplicação")
+    data_proximo_reforco = models.DateField(null=True, blank=True, verbose_name="Próximo Reforço")
+    comprovante = models.FileField(upload_to='vacinas_comprovantes/', blank=True, null=True, verbose_name="Comprovante (Foto/PDF)")
+    
+    def save(self, *args, **kwargs):
+        # Calcula o reforço automaticamente se não for informado e a vacina tiver periodicidade
+        if not self.data_proximo_reforco and self.vacina.meses_reforco > 0:
+            self.data_proximo_reforco = self.data_aplicacao + timedelta(days=self.vacina.meses_reforco * 30)
+        super().save(*args, **kwargs)
+
+    @property
+    def status(self):
+        if not self.data_proximo_reforco: return "Dia"
+        hj = date.today()
+        if self.data_proximo_reforco < hj: return "Vencida"
+        if (self.data_proximo_reforco - hj).days <= 30: return "A vencer"
+        return "Em dia"
+
+# 8.2 ENTREGA DE EPIs (FICHA DE EPI)
+class EntregaEPI(models.Model):
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='epis_entregues')
+    epi = models.ForeignKey(EPI, on_delete=models.PROTECT, verbose_name="Item do Estoque")
+    data_entrega = models.DateField(default=timezone.now)
+    quantidade = models.IntegerField(default=1)
+    
+    # Snapshoot (Foto) dos dados no momento da entrega
+    ca_registrado = models.CharField(max_length=50, verbose_name="CA na Entrega")
+    validade_ca = models.DateField(verbose_name="Validade do CA")
+    
+    data_devolucao = models.DateField(null=True, blank=True, verbose_name="Data de Devolução/Troca")
+    termo_assinado = models.FileField(upload_to='epis_termos/', blank=True, null=True, verbose_name="Ficha Assinada")
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.ca_registrado = self.epi.ca
+            if self.epi.data_validade:
+                self.validade_ca = self.epi.data_validade
+        super().save(*args, **kwargs)
+
+# 8.3 TREINAMENTOS E CERTIFICADOS
+class TreinamentoFuncionario(models.Model):
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='treinamentos')
+    nome_treinamento = models.CharField(max_length=200, verbose_name="Nome do Curso/Treinamento")
+    data_realizacao = models.DateField(verbose_name="Data Realização")
+    data_validade = models.DateField(null=True, blank=True, verbose_name="Validade")
+    certificado = models.FileField(upload_to='treinamentos_certificados/', blank=True, null=True, verbose_name="Certificado (PDF/Foto)")
+    
+    def __str__(self): return self.nome_treinamento
+
+    @property
+    def vencido(self):
+        if not self.data_validade: return False
+        return self.data_validade < date.today()
 
 
 # 10. GESTÃO DE EXTINTORES
@@ -274,3 +373,35 @@ class ArquivoInspecao(models.Model):
         """Retorna True se a extensão for de imagem"""
         ext = os.path.splitext(self.arquivo.name)[1].lower()
         return ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+    
+
+# 9. HISTÓRICO DE AFASTAMENTOS
+class Afastamento(models.Model):
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='afastamentos')
+    data_inicio = models.DateField(verbose_name="Data de Início")
+    data_retorno = models.DateField(null=True, blank=True, verbose_name="Data de Retorno (Previsão ou Real)")
+    motivo = models.TextField(verbose_name="Motivo / CID")
+    laudo = models.FileField(upload_to='afastamentos_laudos/', blank=True, null=True, verbose_name="Laudo Médico (PDF/Foto)")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Afastamento {self.funcionario.nome} - {self.data_inicio}"
+
+    @property
+    def dias_afastado(self):
+        if self.data_retorno:
+            return (self.data_retorno - self.data_inicio).days
+        return (date.today() - self.data_inicio).days
+
+# 10. HISTÓRICO DE ACIDENTES DE TRABALHO
+class AcidenteTrabalho(models.Model):
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='acidentes')
+    data_acidente = models.DateField(verbose_name="Data do Acidente")
+    hora_acidente = models.TimeField(verbose_name="Hora")
+    local = models.CharField(max_length=255, verbose_name="Local do Acidente")
+    descricao_motivo = models.TextField(verbose_name="Descrição do Ocorrido / Motivo")
+    arquivo_evidencia = models.FileField(upload_to='acidentes_arquivos/', blank=True, null=True, verbose_name="Fotos/CAT")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Acidente {self.funcionario.nome} em {self.data_acidente}"

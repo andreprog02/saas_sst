@@ -1,0 +1,323 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    
+    <div class="card mb-4 shadow-sm border-{{ funcionario.cor_status }}" style="border-width: 2px;">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h2 class="text-{{ funcionario.cor_status }} mb-1">
+                        {{ funcionario.nome }}
+                    </h2>
+                    
+                    <span class="badge bg-{{ funcionario.cor_status }} mb-2" style="font-size: 0.9rem;">
+                        {{ funcionario.get_situacao_display }}
+                    </span>
+
+                    <p class="mb-0 text-muted mt-2">
+                        <strong>Cargo:</strong> {{ funcionario.cargo }} | 
+                        <strong>Setor:</strong> {{ funcionario.setor.nome }} | 
+                        <strong>CPF:</strong> {{ funcionario.cpf }}
+                    </p>
+                    <small>Admissão: {{ funcionario.data_admissao|date:"d/m/Y" }}</small>
+                </div>
+                
+                <div class="d-flex flex-column gap-2">
+                    <a href="{% url 'lista_funcionarios' %}" class="btn btn-outline-secondary btn-sm">Voltar p/ Lista</a>
+                    
+                    <a href="{% url 'editar_funcionario' funcionario.id %}" class="btn btn-primary btn-sm shadow-sm">
+                        ✏️ Editar Dados
+                    </a>
+                </div>
+            </div>
+
+            {% if funcionario.motivo_afastamento %}
+                <div class="alert alert-light border border-warning mt-3 mb-0 p-2 d-flex align-items-center">
+                    <span class="fs-4 me-2">📝</span>
+                    <div>
+                        <strong>Observação da Situação:</strong>
+                        <br>
+                        {{ funcionario.motivo_afastamento }}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">💉 Carteira de Vacinação</h5>
+                    <a href="{% url 'adicionar_vacina_func' funcionario.id %}" class="btn btn-sm btn-light text-success fw-bold shadow-sm">+ Registrar Dose</a>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover mb-0 text-center table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Vacina</th>
+                                <th>Data</th>
+                                <th>Reforço</th>
+                                <th>Anexo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in vacinas %}
+                            <tr>
+                                <td class="text-start ps-3 fw-bold">{{ v.vacina.nome }}</td>
+                                <td>{{ v.data_aplicacao|date:"d/m/y" }}</td>
+                                <td>
+                                    {% if v.status == 'Vencida' %}
+                                        <span class="badge bg-danger">{{ v.data_proximo_reforco|date:"d/m/y" }}</span>
+                                    {% elif v.status == 'A vencer' %}
+                                        <span class="badge bg-warning text-dark">{{ v.data_proximo_reforco|date:"d/m/y" }}</span>
+                                    {% else %}
+                                        <span class="text-success fw-bold">{{ v.data_proximo_reforco|date:"d/m/y"|default:"-" }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if v.comprovante %}
+                                        <a href="{{ v.comprovante.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Ver Comprovante">📎</a>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhuma vacina registrada.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">🦺 Histórico de EPIs</h5>
+                    <a href="{% url 'adicionar_epi_func' funcionario.id %}" class="btn btn-sm btn-dark text-warning fw-bold shadow-sm">+ Entregar EPI</a>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover mb-0 text-center table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>EPI</th>
+                                <th>Entrega</th>
+                                <th>C.A.</th>
+                                <th>Ficha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for epi in epis %}
+                            <tr>
+                                <td class="text-start ps-3">
+                                    <strong>{{ epi.epi.tipo.nome }}</strong>
+                                    <br><small class="text-muted">{{ epi.epi.tamanho }}</small>
+                                </td>
+                                <td>{{ epi.data_entrega|date:"d/m/y" }}</td>
+                                <td>
+                                    {{ epi.ca_registrado }}
+                                    {% if epi.validade_ca < today %}
+                                        <span class="text-danger" title="CA Vencido">⚠️</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if epi.termo_assinado %}
+                                        <a href="{{ epi.termo_assinado.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Ficha Assinada">📄</a>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhum EPI entregue.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">🎓 Treinamentos & Cursos</h5>
+                    <a href="{% url 'adicionar_treinamento_func' funcionario.id %}" class="btn btn-sm btn-light text-info fw-bold shadow-sm">+ Add Curso</a>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover mb-0 text-center table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Curso</th>
+                                <th>Data</th>
+                                <th>Validade</th>
+                                <th>Cert.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in treinamentos %}
+                            <tr>
+                                <td class="text-start ps-3 fw-bold">{{ t.nome_treinamento }}</td>
+                                <td>{{ t.data_realizacao|date:"d/m/y" }}</td>
+                                <td>
+                                    {% if t.vencido %}
+                                        <span class="badge bg-danger">{{ t.data_validade|date:"d/m/y" }}</span>
+                                    {% else %}
+                                        {{ t.data_validade|date:"d/m/y"|default:"Indefinida" }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if t.certificado %}
+                                        <a href="{{ t.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-info" title="Ver Certificado">🏆</a>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhum treinamento registrado.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 shadow-sm border-danger" style="border-width: 1px;">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">⚠️ Histórico Disciplinar</h5>
+                    <a href="{% url 'adicionar_advertencia_func' funcionario.id %}" class="btn btn-sm btn-light text-danger fw-bold shadow-sm">+ Advertência</a>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover mb-0 text-center table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Motivo</th>
+                                <th>Reinc.?</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for adv in advertencias %}
+                            <tr>
+                                <td><strong>{{ adv.data_incidente|date:"d/m/y" }}</strong></td>
+                                <td class="text-start ps-3">{{ adv.tipo.titulo }}</td>
+                                <td>
+                                    {% if adv.reincidente %}
+                                        <span class="badge bg-danger">Sim</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-muted border">Não</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'imprimir_advertencia' adv.id %}" target="_blank" class="btn btn-sm btn-outline-dark" title="Imprimir Documento">🖨️</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhuma ocorrência registrada.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 shadow-sm border-secondary" style="border-width: 1px;">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">🏥 Histórico de Afastamentos</h5>
+                    <a href="{% url 'adicionar_afastamento_func' funcionario.id %}" class="btn btn-sm btn-light text-dark fw-bold shadow-sm">+ Registrar</a>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover mb-0 text-center table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Início</th>
+                                <th>Retorno</th>
+                                <th>Motivo</th>
+                                <th>Laudo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in afastamentos %}
+                            <tr>
+                                <td>{{ item.data_inicio|date:"d/m/y" }}</td>
+                                <td>
+                                    {% if item.data_retorno %}
+                                        {{ item.data_retorno|date:"d/m/y" }}
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Em aberto</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-start ps-2">
+                                    <small>{{ item.motivo|truncatechars:20 }}</small>
+                                </td>
+                                <td>
+                                    {% if item.laudo %}
+                                        <a href="{{ item.laudo.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">📎</a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhum afastamento.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 shadow-sm border-dark" style="border-width: 1px;">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">🚑 Acidentes de Trabalho</h5>
+                    <a href="{% url 'adicionar_acidente_func' funcionario.id %}" class="btn btn-sm btn-light text-dark fw-bold shadow-sm">+ Registrar</a>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover mb-0 text-center table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Local</th>
+                                <th>Motivo</th>
+                                <th>Anexo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for acid in acidentes %}
+                            <tr>
+                                <td>
+                                    <strong>{{ acid.data_acidente|date:"d/m/y" }}</strong><br>
+                                    <small>{{ acid.hora_acidente|time:"H:i" }}</small>
+                                </td>
+                                <td class="text-start">{{ acid.local }}</td>
+                                <td class="text-start">
+                                    <small>{{ acid.descricao_motivo|truncatechars:15 }}</small>
+                                </td>
+                                <td>
+                                    {% if acid.arquivo_evidencia %}
+                                        <a href="{{ acid.arquivo_evidencia.url }}" target="_blank" class="btn btn-sm btn-outline-dark">📷</a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhum acidente registrado.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -16,14 +16,40 @@ from core.views import (
     # Views de Extintores
     dashboard_extintores, criar_editar_extintor, 
     registrar_inspecao, historico_extintor, 
-    exportar_extintores, gerar_qrcode, extintor_mobile,
+    exportar_extintores, gerar_qrcode, imprimir_etiqueta, extintor_mobile,
 
-    # --- VIEWS DE COMBATE A INCÊNDIO ---
+    # Views de Outros Equipamentos (Hidrantes, etc)
     dashboard_equipamentos, 
     criar_editar_equipamento, 
     inspecionar_equipamento,
-    historico_equipamento  # <--- ESSA IMPORTAÇÃO ERA O QUE FALTAVA
+    historico_equipamento,
+
+    # --- NOVAS VIEWS: PRONTUÁRIO DO FUNCIONÁRIO ---
+    detalhe_funcionario,
+    adicionar_vacina_func,
+    adicionar_epi_func,
+    adicionar_treinamento_func
 )
+
+# Importe a nova view
+from core.views import (
+    # ...
+    adicionar_advertencia_func
+)
+
+
+from core.views import (
+    # ... outros imports ...
+    editar_funcionario, # <--- IMPORTANTE: Adicione este nome na importação
+)
+
+from core.views import (
+    # ... imports anteriores ...
+    adicionar_afastamento_func,
+    adicionar_acidente_func
+)
+
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -36,15 +62,22 @@ urlpatterns = [
     path('cadastrar/', cadastro_view, name='cadastro'),
     path('', dashboard_view, name='dashboard'),
     path('setores/novo/', criar_setor, name='criar_setor'),
+    
+    # --- FUNCIONÁRIOS E PRONTUÁRIO ---
     path('funcionarios/', lista_funcionarios, name='lista_funcionarios'),
     path('funcionarios/novo/', criar_funcionario, name='criar_funcionario'),
+    # Novas rotas de detalhes e histórico
+    path('funcionarios/<int:pk>/', detalhe_funcionario, name='detalhe_funcionario'),
+    path('funcionarios/<int:func_id>/vacina/nova/', adicionar_vacina_func, name='adicionar_vacina_func'),
+    path('funcionarios/<int:func_id>/epi/novo/', adicionar_epi_func, name='adicionar_epi_func'),
+    path('funcionarios/<int:func_id>/treinamento/novo/', adicionar_treinamento_func, name='adicionar_treinamento_func'),
 
     # Configurações
     path('config/tipos-epi/', gerenciar_tipos, name='gerenciar_tipos'),
     path('config/locais/', gerenciar_locais, name='gerenciar_locais'),
     path('config/vacinas/', gerenciar_vacinas, name='gerenciar_vacinas'),
 
-    # EPIs
+    # EPIs (Estoque)
     path('estoque/', lista_epis, name='lista_epis'),
     path('estoque/novo/', criar_editar_epi, name='criar_epi'),
     path('estoque/editar/<int:pk>/', criar_editar_epi, name='editar_epi'),
@@ -64,16 +97,23 @@ urlpatterns = [
     path('extintores/historico/<int:pk>/', historico_extintor, name='historico_extintor'),
     path('extintores/exportar/', exportar_extintores, name='exportar_extintores'),
     path('extintores/qrcode/<int:pk>/', gerar_qrcode, name='gerar_qrcode'),
+    path('extintores/etiqueta/<int:pk>/', imprimir_etiqueta, name='imprimir_etiqueta'),
     path('extintores/scan/<int:pk>/', extintor_mobile, name='extintor_mobile'),
 
-    # --- ROTAS PARA OUTROS EQUIPAMENTOS ---
+    # Outros Equipamentos
     path('equipamentos/', dashboard_equipamentos, name='dashboard_equipamentos'),
     path('equipamentos/novo/', criar_editar_equipamento, name='criar_equipamento'),
     path('equipamentos/editar/<int:pk>/', criar_editar_equipamento, name='editar_equipamento'),
     path('equipamentos/inspecao/<int:pk>/', inspecionar_equipamento, name='inspecionar_equipamento'),
-    
-    # ESTA LINHA ABAIXO É A QUE ESTAVA FALTANDO:
     path('equipamentos/historico/<int:pk>/', historico_equipamento, name='historico_equipamento'),
+    path('funcionarios/<int:func_id>/advertencia/nova/', adicionar_advertencia_func, name='adicionar_advertencia_func'),
+
+    path('funcionarios/editar/<int:pk>/', editar_funcionario, name='editar_funcionario'),
+    
+    path('funcionarios/<int:pk>/', detalhe_funcionario, name='detalhe_funcionario'),
+
+    path('funcionarios/<int:func_id>/afastamento/novo/', adicionar_afastamento_func, name='adicionar_afastamento_func'),
+    path('funcionarios/<int:func_id>/acidente/novo/', adicionar_acidente_func, name='adicionar_acidente_func'),
 ]
 
 if settings.DEBUG:

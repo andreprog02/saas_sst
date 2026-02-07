@@ -1,96 +1,149 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novo Setor - SST</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
-        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
-        h2 { color: #333; margin-top: 0; }
-        
-        label { font-weight: bold; color: #555; display: block; margin-top: 15px; margin-bottom: 5px; }
-        
-        /* Estilo dos inputs de texto */
-        input[type="text"], textarea { 
-            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; 
-            font-family: inherit;
-        }
+{% extends 'dashboard.html' %}
 
-        /* --- Estilo Especial para a Lista de NRs e Vacinas --- */
-        .checkbox-container {
-            max-height: 200px; /* Altura máxima da caixa */
-            overflow-y: auto;  /* Barra de rolagem se passar da altura */
-            border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 4px;
-            background: #fafafa;
-        }
-        .checkbox-container label {
-            display: flex; /* Alinha checkbox e texto */
-            align-items: center;
-            font-weight: normal; /* Tira o negrito das opções */
-            margin-top: 5px;
-            cursor: pointer;
-        }
-        .checkbox-container input {
-            margin-right: 10px;
-            width: auto; /* Checkbox não pode ser width 100% */
-        }
-        
-        /* Link dentro do container vazio */
-        .empty-link {
-            color: #007bff;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .empty-link:hover { text-decoration: underline; }
-
-        /* ------------------------------------------ */
-
-        button { background: #007bff; color: white; padding: 12px; border: none; width: 100%; font-size: 16px; cursor: pointer; border-radius: 4px; margin-top: 20px; font-weight: bold;}
-        button:hover { background: #0056b3; }
-        .btn-back { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h2>🏭 Novo Setor & Riscos</h2>
-        <p style="color:#666; font-size: 0.9rem;">Defina os requisitos para este ambiente de trabalho.</p>
-        
-        <form method="post">
-            {% csrf_token %}
-            
-            <label>Nome do Setor:</label>
-            {{ form.nome }}
-
-            <label>Normas Regulamentadoras (NRs):</label>
-            <div class="checkbox-container">
-                {{ form.nrs_obrigatorias }}
-            </div>
-            
-            <label>EPIs Obrigatórios (Texto Livre):</label>
-            {{ form.epis_obrigatorios }}
-
-            <label>Treinamentos Necessários:</label>
-            {{ form.treinamentos }}
-
-            <label>Vacinas Obrigatórias:</label>
-            <div class="checkbox-container">
-                {% if form.vacinas_padrao.field.queryset.exists %}
-                    {{ form.vacinas_padrao }}
-                {% else %}
-                    <div style="padding: 15px; text-align: center; color: #888; font-size: 0.9rem;">
-                        Nenhuma vacina cadastrada no sistema.<br>
-                        <a href="{% url 'gerenciar_vacinas' %}" target="_blank" class="empty-link">Clique aqui para cadastrar vacinas</a>
-                    </div>
-                {% endif %}
-            </div>
-            <small style="color: #888; display: block; margin-top: 5px;">Selecione as vacinas exigidas para este setor.</small>
-
-            <button type="submit">Salvar Setor</button>
-            <a href="{% url 'dashboard' %}" class="btn-back">Cancelar</a>
-        </form>
+{% block content %}
+<div class="container mt-4 mb-5">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>🏭 Cadastro de Setor</h2>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Voltar</a>
     </div>
-</body>
-</html>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <strong>📋 Dados do Setor</strong>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="{{ form.nome.id_for_label }}" class="form-label fw-bold">Nome do Setor</label>
+                    {{ form.nome }}
+                    <div class="form-text">Ex: Produção, Administrativo, Manutenção.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow-sm border-warning">
+                    <div class="card-header bg-warning text-dark fw-bold">
+                        ⚠️ Normas Regulamentadoras (NRs)
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="p-3" style="max-height: 250px; overflow-y: auto;">
+                            {{ form.nrs_obrigatorias }}
+                            {% if not form.nrs_obrigatorias.field.queryset.exists %}
+                                <p class="text-muted small">Nenhuma NR cadastrada.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light small text-muted">
+                        Selecione as NRs aplicáveis a este setor.
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow-sm border-info">
+                    <div class="card-header bg-info text-white fw-bold">
+                        🦺 EPIs Obrigatórios
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="p-3" style="max-height: 250px; overflow-y: auto;">
+                            {{ form.epis_obrigatorios }}
+                            {% if not form.epis_obrigatorios.field.queryset.exists %}
+                                <p class="text-muted small text-center mt-3">
+                                    Nenhum Tipo de EPI cadastrado.<br>
+                                    <a href="{% url 'gerenciar_tipos' %}">Cadastre tipos aqui</a>.
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light small text-muted">
+                        Marque os tipos de EPI exigidos para entrar neste setor.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow-sm border-success">
+                    <div class="card-header bg-success text-white fw-bold">
+                        💉 Vacinas Exigidas
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="p-3" style="max-height: 200px; overflow-y: auto;">
+                            {{ form.vacinas_padrao }}
+                            {% if not form.vacinas_padrao.field.queryset.exists %}
+                                <p class="text-muted small">Nenhuma vacina cadastrada.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-secondary text-white fw-bold">
+                        📚 Treinamentos Necessários
+                    </div>
+                    <div class="card-body">
+                        {{ form.treinamentos }}
+                        <div class="form-text">Liste os cursos ou treinamentos (texto livre).</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2 mb-5">
+            <button type="submit" class="btn btn-success btn-lg fw-bold">
+                💾 Salvar Setor
+            </button>
+        </div>
+
+    </form>
+</div>
+
+<style>
+    /* Remove as bolinhas da lista padrao do Django e ajusta espaçamento */
+    ul#id_nrs_obrigatorias, 
+    ul#id_vacinas_padrao, 
+    ul#id_epis_obrigatorios {
+        list-style-type: none;
+        padding-left: 0;
+        margin-bottom: 0;
+    }
+
+    /* Estiliza cada item (checkbox + label) */
+    ul#id_nrs_obrigatorias li, 
+    ul#id_vacinas_padrao li, 
+    ul#id_epis_obrigatorios li {
+        padding: 5px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    /* Input checkbox mais bonito */
+    input[type="checkbox"] {
+        margin-right: 8px;
+        transform: scale(1.2);
+        accent-color: #0d6efd; /* Cor azul bootstrap */
+    }
+
+    /* Hover para facilitar o clique */
+    label {
+        cursor: pointer;
+        width: 90%; /* Ocupa a linha quase toda para facilitar clique */
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Adiciona classe form-control aos campos de texto
+        const inputsTexto = document.querySelectorAll('input[type="text"], textarea');
+        inputsTexto.forEach(input => input.classList.add('form-control'));
+    });
+</script>
+
+{% endblock %}
