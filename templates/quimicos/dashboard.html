@@ -1,0 +1,120 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>🧪 Produtos Químicos</h2>
+            <p class="text-muted mb-0">Gestão de FISPQ, Validade e Riscos (NR-26).</p>
+        </div>
+        <div>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary me-2">Voltar</a>
+            <a href="{% url 'criar_quimico' %}" class="btn btn-success fw-bold">+ Novo Produto</a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white shadow-sm">
+                <div class="card-body">
+                    <h3>{{ total }}</h3>
+                    <span>Produtos Cadastrados</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-dark shadow-sm">
+                <div class="card-body">
+                    <h3>{{ alerta }}</h3>
+                    <span>Vencendo em 30 dias</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger text-white shadow-sm">
+                <div class="card-body">
+                    <h3>{{ vencidos }}</h3>
+                    <span>Produtos Vencidos</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Produto / Fabricante</th>
+                            <th>Localização</th>
+                            <th>Emergência / Risco</th>
+                            <th>Validade</th>
+                            <th>FISPQ</th>
+                            <th class="text-end pe-4">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in produtos %}
+                        <tr>
+                            <td class="ps-4">
+                                <strong class="text-dark">{{ p.nome }}</strong>
+                                <br>
+                                <small class="text-muted">{{ p.fabricante }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    📍 {{ p.localizacao.nome }}
+                                </span>
+                                <br>
+                                <small class="text-muted">{{ p.quantidade }}</small>
+                            </td>
+                            <td>
+                                <div class="mb-1">
+                                    📞 <span class="fw-bold">{{ p.telefone_emergencia }}</span>
+                                </div>
+                                <small class="text-danger" title="{{ p.riscos }}">
+                                    ⚠️ {{ p.riscos|truncatechars:25 }}
+                                </small>
+                            </td>
+                            <td>
+                                {% if p.status_validade == 'vencido' %}
+                                    <span class="badge bg-danger">Vencido</span>
+                                    <div class="text-danger small fw-bold">{{ p.data_validade|date:"d/m/Y" }}</div>
+                                {% elif p.status_validade == 'alerta' %}
+                                    <span class="badge bg-warning text-dark">Atenção</span>
+                                    <div class="text-warning text-dark small fw-bold">{{ p.data_validade|date:"d/m/Y" }}</div>
+                                {% else %}
+                                    <span class="badge bg-success">OK</span>
+                                    <div class="text-muted small">{{ p.data_validade|date:"d/m/Y" }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.fispq %}
+                                    <a href="{{ p.fispq.url }}" target="_blank" class="btn btn-sm btn-outline-danger" title="Baixar FISPQ">
+                                        📄 PDF
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'editar_quimico' p.id %}" class="btn btn-sm btn-outline-primary">✏️</a>
+                                <a href="{% url 'deletar_quimico' p.id %}" class="btn btn-sm btn-outline-danger">🗑️</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                Nenhum produto químico cadastrado.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

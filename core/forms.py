@@ -1,6 +1,5 @@
 from django import forms
 from django.contrib.auth.models import User
-import os
 from django.db import transaction
 from .models import (
     Empresa, Funcionario, Setor, NormaRegulamentadora, 
@@ -9,9 +8,16 @@ from .models import (
     Extintor, InspecaoExtintor,
     Equipamento, InspecaoEquipamento,
     ControleVacina, EntregaEPI, TreinamentoFuncionario,
-    # Novos modelos
-    Afastamento, AcidenteTrabalho
+    Afastamento, AcidenteTrabalho, ProdutoQuimico,
+    TipoEspecialidade, Hospital # <-- IMPORTANTE
 )
+
+# 1. Adicione ProdutoQuimico nos imports do topo:
+from .models import (
+    # ... outros models ...
+    ProdutoQuimico
+)
+
 
 # --- WIDGETS ---
 class MultipleFileInput(forms.ClearableFileInput):
@@ -261,3 +267,56 @@ class AcidenteTrabalhoForm(forms.ModelForm):
             'hora_acidente': forms.TimeInput(attrs={'type': 'time'}),
             'descricao_motivo': forms.Textarea(attrs={'rows': 3}),
         }
+
+
+class ProdutoQuimicoForm(forms.ModelForm):
+    class Meta:
+        model = ProdutoQuimico
+        exclude = ['empresa', 'criado_em']
+        widgets = {
+            'data_fabricacao': forms.DateInput(attrs={'type': 'date'}),
+            'data_validade': forms.DateInput(attrs={'type': 'date'}),
+            'riscos': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Descreva os riscos conforme rótulo ou FISPQ...'}),
+        }
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+
+
+class ProdutoQuimicoForm(forms.ModelForm):
+    class Meta:
+        model = ProdutoQuimico
+        exclude = ['empresa', 'criado_em']
+        widgets = {
+            'data_fabricacao': forms.DateInput(attrs={'type': 'date'}),
+            'data_validade': forms.DateInput(attrs={'type': 'date'}),
+            'riscos': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Descreva os riscos conforme rótulo ou FISPQ...'}),
+        }
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+
+
+class TipoEspecialidadeForm(forms.ModelForm):
+    class Meta:
+        model = TipoEspecialidade
+        fields = ['nome']
+
+class HospitalForm(forms.ModelForm):
+    especialidades = forms.ModelMultipleChoiceField(
+        queryset=TipoEspecialidade.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
+    class Meta:
+        model = Hospital
+        exclude = ['empresa', 'criado_em']
+        widgets = {'endereco': forms.Textarea(attrs={'rows': 2})}
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['especialidades'].queryset = TipoEspecialidade.objects.filter(empresa_id=empresa_id)

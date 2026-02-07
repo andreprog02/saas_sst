@@ -1,0 +1,55 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>🏥 Rede de Emergência</h2>
+            <p class="text-muted mb-0">Hospitais e Clínicas de referência (PAE).</p>
+        </div>
+        <div>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary me-2">Voltar</a>
+            <a href="{% url 'gerenciar_especialidades' %}" class="btn btn-outline-primary me-2">⚙️ Especialidades</a>
+            <a href="{% url 'criar_hospital' %}" class="btn btn-success fw-bold">+ Novo Hospital</a>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for h in hospitais %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <h5 class="card-title text-primary fw-bold">{{ h.nome }}</h5>
+                        <a href="{% url 'editar_hospital' h.id %}" class="btn btn-sm btn-light">✏️</a>
+                    </div>
+                    
+                    <p class="mb-2"><strong>📞 Tel:</strong> {{ h.telefone }}</p>
+                    <p class="mb-2 text-muted small">📍 {{ h.endereco }}</p>
+                    <p class="mb-3">🕐 {{ h.horario_atendimento }}</p>
+
+                    <div class="mb-3">
+                        {% for esp in h.especialidades.all %}
+                            <span class="badge bg-info text-dark mb-1">{{ esp.nome }}</span>
+                        {% empty %}
+                            <small class="text-muted">Sem especialidades definidas</small>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-0">
+                    {% if h.mapa_link %}
+                        <a href="{{ h.mapa_link }}" target="_blank" class="btn btn-outline-primary btn-sm w-100">🗺️ Ver no Mapa</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <h4 class="text-muted">Nenhum hospital cadastrado.</h4>
+            <a href="{% url 'criar_hospital' %}" class="btn btn-success mt-2">+ Cadastrar Primeiro</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

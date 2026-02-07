@@ -405,3 +405,55 @@ class AcidenteTrabalho(models.Model):
 
     def __str__(self):
         return f"Acidente {self.funcionario.nome} em {self.data_acidente}"
+    
+
+class ProdutoQuimico(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    nome = models.CharField(max_length=200, verbose_name="Nome do Produto")
+    fabricante = models.CharField(max_length=200, verbose_name="Fabricante/Fornecedor")
+    
+    # Dados de Segurança
+    riscos = models.TextField(verbose_name="Riscos e Perigos", help_text="Ex: Inflamável, Corrosivo, Tóxico...")
+    telefone_emergencia = models.CharField(max_length=50, verbose_name="Tel. Emergência (Vazamentos)")
+    
+    # Controle
+    lote = models.CharField(max_length=50, blank=True, verbose_name="Nº do Lote")
+    data_fabricacao = models.DateField(null=True, blank=True, verbose_name="Data de Fabricação")
+    data_validade = models.DateField(verbose_name="Data de Validade")
+    
+    localizacao = models.ForeignKey(Localizacao, on_delete=models.PROTECT, verbose_name="Local de Armazenamento")
+    quantidade = models.CharField(max_length=50, verbose_name="Quantidade Atual", help_text="Ex: 50 Litros, 10 Caixas")
+    
+    # Documentação
+    fispq = models.FileField(upload_to='produtos_quimicos_fispq/', blank=True, null=True, verbose_name="FISPQ (PDF)")
+    foto_rotulo = models.ImageField(upload_to='produtos_quimicos_fotos/', blank=True, null=True, verbose_name="Foto do Rótulo")
+    
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.nome
+
+    @property
+    def status_validade(self):
+        """Retorna o status para colorir o badge no template"""
+        dias = (self.data_validade - date.today()).days
+        if dias < 0: return "vencido" # Vermelho
+        if dias <= 30: return "alerta" # Amarelo
+        return "ok" # Verde
+    
+class TipoEspecialidade(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    nome = models.CharField(max_length=100)
+    def __str__(self): return self.nome
+
+# DEPOIS O HOSPITAL (que usa o tipo)
+class Hospital(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    nome = models.CharField(max_length=200)
+    telefone = models.CharField(max_length=50)
+    endereco = models.CharField(max_length=255)
+    horario_atendimento = models.CharField(max_length=100, default="24 Horas")
+    especialidades = models.ManyToManyField(TipoEspecialidade) # Referência direta agora funciona
+    mapa_link = models.URLField(blank=True, null=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    def __str__(self): return self.nome

@@ -1,4 +1,5 @@
 import csv
+import json
 import qrcode
 from datetime import date, timedelta
 from io import BytesIO
@@ -7,7 +8,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.core.files.base import ContentFile
 from django.db.models import Count, Q
 from django.db.models.functions import TruncMonth
@@ -21,7 +22,9 @@ from .models import (
     Equipamento, InspecaoEquipamento, ArquivoInspecao,
     # Prontuário
     ControleVacina, EntregaEPI, TreinamentoFuncionario,
-    Afastamento, AcidenteTrabalho
+    Afastamento, AcidenteTrabalho,
+    # Quimicos e Hospitais
+    ProdutoQuimico, Hospital, TipoEspecialidade
 )
 
 # --- IMPORTAÇÃO DOS FORMULÁRIOS ---
@@ -33,7 +36,9 @@ from .forms import (
     EquipamentoForm, InspecaoEquipamentoForm,
     # Forms do Prontuário
     ControleVacinaForm, EntregaEPIForm, TreinamentoFuncionarioForm,
-    AfastamentoForm, AcidenteTrabalhoForm
+    AfastamentoForm, AcidenteTrabalhoForm,
+    # Forms Novos
+    ProdutoQuimicoForm, HospitalForm, TipoEspecialidadeForm
 )
 
 # --- VIEWS GERAIS ---
@@ -537,3 +542,127 @@ def historico_equipamento(request, pk):
     equipamento = get_object_or_404(Equipamento, pk=pk, empresa=empresa)
     inspecoes = equipamento.inspecoes.all().order_by('-data_inspecao')
     return render(request, 'equipamentos/historico.html', {'equipamento': equipamento, 'inspecoes': inspecoes})
+
+# --- PRODUTOS QUÍMICOS (FISPQ) ---
+
+@login_required
+def dashboard_quimicos(request):
+    empresa = request.user.perfil.empresa
+    produtos = ProdutoQuimico.objects.filter(empresa=empresa).order_by('data_validade')
+    
+    termo = request.GET.get('search')
+    if termo:
+        produtos = produtos.filter(
+            Q(nome__icontains=termo) | Q(fabricante__icontains=termo) | Q(riscos__icontains=termo)
+        )
+
+    total = produtos.count()
+    vencidos = 0
+    alerta = 0
+    for p in produtos:
+        if p.status_validade == 'vencido': vencidos += 1
+        elif p.status_validade == 'alerta': alerta += 1
+
+    return render(request, 'quimicos/dashboard.html', {
+        'produtos': produtos, 'total': total, 'vencidos': vencidos, 'alerta': alerta
+    })
+
+@login_required
+def criar_editar_quimico(request, pk=None):
+    empresa = request.user.perfil.empresa
+    produto = get_object_or_404(ProdutoQuimico, pk=pk, empresa=empresa) if pk else None
+    
+    if request.method == 'POST':
+        form = ProdutoQuimicoForm(empresa.id, request.POST, request.FILES, instance=produto)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.empresa = empresa
+            obj.save()
+            return redirect('dashboard_quimicos')
+    else:
+        form = ProdutoQuimicoForm(empresa.id, instance=produto)
+    
+    titulo = f"Editar: {produto.nome}" if produto else "Novo Produto Químico"
+    return render(request, 'generic_form.html', {'form': form, 'titulo': titulo})
+
+@login_required
+def deletar_quimico(request, pk):
+    empresa = request.user.perfil.empresa
+    produto = get_object_or_404(ProdutoQuimico, pk=pk, empresa=empresa)
+    if request.method == 'POST':
+        produto.delete()
+        return redirect('dashboard_quimicos')
+    return render(request, 'confirmar_delete.html', {'objeto': produto})
+
+# --- HOSPITAIS E ESPECIALIDADES ---
+
+@login_required
+def dashboard_hospitais(request):
+    empresa = request.user.perfil.empresa
+    hospitais = Hospital.objects.filter(empresa=empresa)
+    return render(request, 'hospitais/dashboard.html', {'hospitais': hospitais})
+
+@login_required
+def criar_editar_hospital(request, pk=None):
+    empresa = request.user.perfil.empresa
+    hospital = get_object_or_404(Hospital, pk=pk, empresa=empresa) if pk else None
+    
+    # Pré-carrega especialidades se não houver
+    if not TipoEspecialidade.objects.filter(empresa=empresa).exists():
+        padroes = ["Pronto Socorro 24h", "Traumatologia (Fraturas)", "Queimaduras", "Oftalmologia", "Cardiologia", "Intoxicação Exógena"]
+        for p in padroes:
+            TipoEspecialidade.objects.create(empresa=empresa, nome=p)
+    
+    if request.method == 'POST':
+        form = HospitalForm(empresa.id, request.POST, instance=hospital)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.empresa = empresa
+            obj.save()
+            form.save_m2m()
+            return redirect('dashboard_hospitais')
+    else:
+        form = HospitalForm(empresa.id, instance=hospital)
+    
+    return render(request, 'hospitais/form.html', {'form': form, 'titulo': 'Cadastro de Hospital/Clínica'})
+
+@login_required
+def gerenciar_especialidades(request):
+    empresa = request.user.perfil.empresa
+    tipos = TipoEspecialidade.objects.filter(empresa=empresa)
+    
+    if request.method == 'POST':
+        if 'delete_id' in request.POST:
+            get_object_or_404(TipoEspecialidade, id=request.POST.get('delete_id'), empresa=empresa).delete()
+            return redirect('gerenciar_especialidades')
+        
+        if 'importar_padrao' in request.POST:
+            padroes = ["Emergência Geral", "Traumatologia", "Queimaduras", "Oftalmologia", "Intoxicação", "Cardiologia"]
+            for nome in padroes:
+                TipoEspecialidade.objects.get_or_create(empresa=empresa, nome=nome)
+            return redirect('gerenciar_especialidades')
+
+        form = TipoEspecialidadeForm(request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.empresa = empresa
+            obj.save()
+            return redirect('gerenciar_especialidades')
+    else:
+        form = TipoEspecialidadeForm()
+        
+    return render(request, 'hospitais/gerenciar_especialidades.html', {'tipos': tipos, 'form': form})
+
+# API para criar especialidade via Javascript
+@login_required
+def api_criar_especialidade(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        nome = data.get('nome')
+        empresa = request.user.perfil.empresa
+        if nome:
+            obj, created = TipoEspecialidade.objects.get_or_create(
+                empresa=empresa, nome__iexact=nome, defaults={'nome': nome}
+            )
+            return JsonResponse({'id': obj.id, 'nome': obj.nome, 'created': created})
+    return JsonResponse({'error': 'Dados inválidos'}, status=400)

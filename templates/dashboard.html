@@ -162,6 +162,14 @@
 
     <header>
         <a href="{% url 'dashboard' %}" class="logo">🛡️ SST SaaS</a>
+        
+        <nav class="d-none d-md-flex gap-3">
+            <a href="{% url 'dashboard' %}" class="text-decoration-none text-secondary fw-bold">Dashboard</a>
+            <a href="{% url 'lista_funcionarios' %}" class="text-decoration-none text-secondary">Funcionários</a>
+            <a href="{% url 'dashboard_quimicos' %}" class="text-decoration-none text-secondary">Químicos</a>
+            <a href="{% url 'dashboard_hospitais' %}" class="text-decoration-none text-secondary">Hospitais</a>
+        </nav>
+
         <div class="user-menu">
             <span class="user-name">Olá, {{ user.username }}</span>
             <form action="{% url 'logout' %}" method="post" style="display:inline;">
@@ -234,6 +242,24 @@
                             <span>➕</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="{% url 'criar_quimico' %}" class="btn-action">
+                            <div>
+                                <strong>Novo Produto Químico</strong>
+                                <small>FISPQ e Validade</small>
+                            </div>
+                            <span>🧪</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'criar_hospital' %}" class="btn-action">
+                            <div>
+                                <strong>Novo Hospital</strong>
+                                <small>Rede credenciada</small>
+                            </div>
+                            <span>🏥</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -242,8 +268,29 @@
                 <ul class="action-list">
                     <li>
                         <a href="{% url 'lista_funcionarios' %}" class="btn-action">
-                            Funcionários
+                            <div>
+                                <strong>Funcionários</strong>
+                                <small>Prontuários e Afastamentos</small>
+                            </div>
                             <span>📋</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard_quimicos' %}" class="btn-action">
+                            <div>
+                                <strong>Produtos Químicos</strong>
+                                <small>Controle NR-26 e Emergências</small>
+                            </div>
+                            <span>☣️</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard_hospitais' %}" class="btn-action">
+                            <div>
+                                <strong>Rede de Emergência</strong>
+                                <small>Hospitais e PAE</small>
+                            </div>
+                            <span>🚑</span>
                         </a>
                     </li>
                     <li>
@@ -295,6 +342,12 @@
                         <a href="{% url 'gerenciar_locais' %}" class="btn-action">
                             Locais / Almoxarifado
                             <span>📍</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'gerenciar_especialidades' %}" class="btn-action">
+                            Especialidades Médicas
+                            <span>🩺</span>
                         </a>
                     </li>
                     <li>
