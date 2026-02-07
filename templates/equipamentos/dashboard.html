@@ -1,0 +1,69 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>🚒 Combate a Incêndio (Geral)</h2>
+        <a href="{% url 'criar_equipamento' %}" class="btn btn-primary fw-bold">+ Novo Equipamento</a>
+    </div>
+
+    <div class="card p-3 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Identificação</th>
+                        <th>Local</th>
+                        <th>Situação</th>
+                        <th style="width: 150px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in equipamentos %}
+                    <tr>
+                        <td>
+                            <span style="font-size: 1.2rem;">
+                                {% if item.tipo == 'HIDRANTE' %}💧{% elif item.tipo == 'ALARME' %}🚨{% elif item.tipo == 'LUZ' %}💡{% else %}🔧{% endif %}
+                            </span>
+                            {{ item.get_tipo_display }}
+                        </td>
+                        <td>
+                            <strong>{{ item.nome }}</strong>
+                            {% if item.especificacao %}
+                                <br><small class="text-muted">{{ item.especificacao }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.localizacao.nome }}</td>
+                        <td>
+                            {% if item.status_validade == 'vencido' %}
+                                <span class="badge bg-danger">Vencido</span>
+                            {% elif item.status_validade == 'alerta' %}
+                                <span class="badge bg-warning text-dark">Atenção</span>
+                            {% else %}
+                                <span class="badge bg-success">OK</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'inspecionar_equipamento' item.id %}" class="btn btn-sm btn-outline-success" title="Nova Inspeção">✅</a>
+                                <a href="{% url 'historico_equipamento' item.id %}" class="btn btn-sm btn-outline-secondary" title="Ver Histórico">📜</a>
+                                <a href="{% url 'editar_equipamento' item.id %}" class="btn btn-sm btn-outline-primary" title="Editar">✏️</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted p-4">
+                            Nenhum equipamento cadastrado ainda.
+                            <br>
+                            <a href="{% url 'criar_equipamento' %}" class="fw-bold text-primary" style="text-decoration: none;">Cadastre o primeiro aqui.</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

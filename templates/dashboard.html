@@ -58,7 +58,7 @@
 
         /* --- Conteúdo Principal --- */
         .container {
-            max-width: 1200px; /* Aumentei um pouco para caber 4 cards */
+            max-width: 1200px;
             margin: 40px auto;
             padding: 0 20px;
         }
@@ -250,6 +250,15 @@
                         <a href="{% url 'lista_epis' %}" class="btn-action">
                             Estoque de EPIs
                             <span>🦺</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard_equipamentos' %}" class="btn-action">
+                            <div>
+                                <strong>Combate a Incêndio</strong>
+                                <small>Hidrantes, Alarmes e Luzes</small>
+                            </div>
+                            <span>🚒</span>
                         </a>
                     </li>
                     <li>

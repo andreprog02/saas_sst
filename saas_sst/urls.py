@@ -2,44 +2,27 @@ from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from django.conf import settings
-
-from django.conf import settings
 from django.conf.urls.static import static
 
-# IMPORTAÇÃO CORRETA DE TODAS AS VIEWS
 from core.views import (
-    cadastro_view, 
-    dashboard_view, 
-    criar_setor, 
-    lista_funcionarios, 
-    criar_funcionario,
-    # --- Views de EPIs ---
-    lista_epis, 
-    criar_editar_epi, 
-    deletar_epi, 
+    # Views Originais
+    cadastro_view, dashboard_view, criar_setor, 
+    lista_funcionarios, criar_funcionario,
+    lista_epis, criar_editar_epi, deletar_epi, 
+    gerenciar_tipos, gerenciar_locais, gerenciar_vacinas,
+    gerenciar_tipos_advertencia, nova_advertencia, 
+    dashboard_advertencias, imprimir_advertencia,
+    
+    # Views de Extintores
+    dashboard_extintores, criar_editar_extintor, 
+    registrar_inspecao, historico_extintor, 
+    exportar_extintores, gerar_qrcode, extintor_mobile,
 
-     # --- Views de Extintores ---
-    dashboard_extintores,
-    criar_editar_extintor,
-    registrar_inspecao,
-    historico_extintor,
-    exportar_extintores,
-    gerenciar_tipos, 
-    gerenciar_locais,
-    # --- View de Vacinas ---
-    gerenciar_vacinas,
-    # --- Views de Advertências ---
-    gerenciar_tipos_advertencia,
-    nova_advertencia,
-    dashboard_advertencias,
-    imprimir_advertencia
-)
-
-
-from core.views import (
-    # ... views anteriores ...
-    gerar_qrcode,
-    extintor_mobile
+    # --- VIEWS DE COMBATE A INCÊNDIO ---
+    dashboard_equipamentos, 
+    criar_editar_equipamento, 
+    inspecionar_equipamento,
+    historico_equipamento  # <--- ESSA IMPORTAÇÃO ERA O QUE FALTAVA
 )
 
 urlpatterns = [
@@ -56,12 +39,12 @@ urlpatterns = [
     path('funcionarios/', lista_funcionarios, name='lista_funcionarios'),
     path('funcionarios/novo/', criar_funcionario, name='criar_funcionario'),
 
-    # Configurações (Tipos, Locais, Vacinas)
+    # Configurações
     path('config/tipos-epi/', gerenciar_tipos, name='gerenciar_tipos'),
     path('config/locais/', gerenciar_locais, name='gerenciar_locais'),
     path('config/vacinas/', gerenciar_vacinas, name='gerenciar_vacinas'),
 
-    # EPIs (Estoque)
+    # EPIs
     path('estoque/', lista_epis, name='lista_epis'),
     path('estoque/novo/', criar_editar_epi, name='criar_epi'),
     path('estoque/editar/<int:pk>/', criar_editar_epi, name='editar_epi'),
@@ -73,17 +56,24 @@ urlpatterns = [
     path('advertencias/nova/', nova_advertencia, name='nova_advertencia'),
     path('advertencias/imprimir/<int:pk>/', imprimir_advertencia, name='imprimir_advertencia'),
 
-
-    # --- Módulo Extintores ---
+    # Extintores
     path('extintores/', dashboard_extintores, name='dashboard_extintores'),
     path('extintores/novo/', criar_editar_extintor, name='criar_extintor'),
     path('extintores/editar/<int:pk>/', criar_editar_extintor, name='editar_extintor'),
     path('extintores/inspecao/<int:extintor_id>/', registrar_inspecao, name='registrar_inspecao'),
     path('extintores/historico/<int:pk>/', historico_extintor, name='historico_extintor'),
     path('extintores/exportar/', exportar_extintores, name='exportar_extintores'),
-
     path('extintores/qrcode/<int:pk>/', gerar_qrcode, name='gerar_qrcode'),
     path('extintores/scan/<int:pk>/', extintor_mobile, name='extintor_mobile'),
+
+    # --- ROTAS PARA OUTROS EQUIPAMENTOS ---
+    path('equipamentos/', dashboard_equipamentos, name='dashboard_equipamentos'),
+    path('equipamentos/novo/', criar_editar_equipamento, name='criar_equipamento'),
+    path('equipamentos/editar/<int:pk>/', criar_editar_equipamento, name='editar_equipamento'),
+    path('equipamentos/inspecao/<int:pk>/', inspecionar_equipamento, name='inspecionar_equipamento'),
+    
+    # ESTA LINHA ABAIXO É A QUE ESTAVA FALTANDO:
+    path('equipamentos/historico/<int:pk>/', historico_equipamento, name='historico_equipamento'),
 ]
 
 if settings.DEBUG:

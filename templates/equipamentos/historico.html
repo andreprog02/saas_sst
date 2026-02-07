@@ -1,0 +1,99 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>📜 Histórico: {{ equipamento.nome }}</h3>
+        <div>
+            <a href="{% url 'inspecionar_equipamento' equipamento.id %}" class="btn btn-success">➕ Nova Inspeção</a>
+            <a href="{% url 'dashboard_equipamentos' %}" class="btn btn-secondary">Voltar</a>
+        </div>
+    </div>
+
+    <div class="card p-3 mb-4 bg-light border">
+        <div class="row">
+            <div class="col-md-3"><strong>Tipo:</strong> {{ equipamento.get_tipo_display }}</div>
+            <div class="col-md-3"><strong>Local:</strong> {{ equipamento.localizacao.nome }}</div>
+            <div class="col-md-3">
+                <strong>Validade:</strong> 
+                {% if equipamento.status_validade == 'vencido' %}
+                    <span class="text-danger fw-bold">{{ equipamento.data_validade|date:"d/m/Y" }}</span>
+                {% else %}
+                    <span class="text-success">{{ equipamento.data_validade|date:"d/m/Y"|default:"-" }}</span>
+                {% endif %}
+            </div>
+            <div class="col-md-3"><strong>Spec:</strong> {{ equipamento.especificacao|default:"-" }}</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-dark text-white">Inspeções Realizadas</div>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Responsável</th>
+                        <th class="text-center">Status Geral</th>
+                        <th>Arquivos / Evidências</th>
+                        <th>Observações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for insp in inspecoes %}
+                    <tr>
+                        <td><strong>{{ insp.data_inspecao|date:"d/m/Y" }}</strong></td>
+                        <td>{{ insp.responsavel }}</td>
+                        
+                        <td class="text-center">
+                            {% if insp.item_integro and insp.acesso_livre and insp.sinalizacao_ok and insp.teste_funcional %}
+                                <span class="badge bg-success">APROVADO</span>
+                            {% else %}
+                                <span class="badge bg-danger">IRREGULAR</span>
+                                <br>
+                                <small class="text-muted" style="font-size: 0.7rem;">
+                                    {% if not insp.item_integro %}Dano {% endif %}
+                                    {% if not insp.acesso_livre %}Obstruído {% endif %}
+                                    {% if not insp.sinalizacao_ok %}Sinaliz. {% endif %}
+                                    {% if not insp.teste_funcional %}Falha {% endif %}
+                                </small>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if insp.arquivos.all %}
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for arq in insp.arquivos.all %}
+                                        {% if arq.eh_imagem %}
+                                            <a href="{{ arq.arquivo.url }}" target="_blank">
+                                                <img src="{{ arq.arquivo.url }}" 
+                                                     class="border rounded" 
+                                                     style="width: 50px; height: 50px; object-fit: cover;" 
+                                                     title="Ver Imagem">
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ arq.arquivo.url }}" target="_blank" class="btn btn-sm btn-outline-dark d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;" title="Baixar Arquivo">
+                                                📄
+                                            </a>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+
+                        <td><small class="text-muted">{{ insp.observacoes|default:"-" }}</small></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center p-4 text-muted">Nenhuma inspeção registrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
+from .models import Equipamento, InspecaoEquipamento
 from django.db import transaction
 from .models import (
     Empresa, Funcionario, Setor, NormaRegulamentadora, 
@@ -161,6 +162,36 @@ class InspecaoExtintorForm(forms.ModelForm):
         model = InspecaoExtintor
         fields = ['data_inspecao', 'responsavel', 'lacre_intacto', 'manometro_pressao_ok', 
                   'sinalizacao_visivel', 'acesso_livre', 'mangueira_integra', 'observacoes', 'fotos']
+        widgets = {
+            'data_inspecao': forms.DateInput(attrs={'type': 'date'}),
+            'observacoes': forms.Textarea(attrs={'rows': 2}),
+        }
+
+class EquipamentoForm(forms.ModelForm):
+    class Meta:
+        model = Equipamento
+        fields = ['tipo', 'nome', 'localizacao', 'data_instalacao', 'data_validade', 'especificacao', 'imagem']
+        widgets = {
+            'data_instalacao': forms.DateInput(attrs={'type': 'date'}),
+            'data_validade': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+
+class InspecaoEquipamentoForm(forms.ModelForm):
+    # Campo novo para múltiplos arquivos
+    arquivos = forms.FileField(
+        widget=MultipleFileInput(attrs={'multiple': True}),
+        label="Evidências (Fotos) e Laudos (PDF)",
+        required=False
+    )
+
+    class Meta:
+        model = InspecaoEquipamento
+        fields = ['data_inspecao', 'responsavel', 'item_integro', 'acesso_livre', 'sinalizacao_ok', 'teste_funcional', 'observacoes', 'arquivos']
         widgets = {
             'data_inspecao': forms.DateInput(attrs={'type': 'date'}),
             'observacoes': forms.Textarea(attrs={'rows': 2}),

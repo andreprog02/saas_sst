@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from io import BytesIO
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse  # <--- ESTA IMPORTAÇÃO ESTAVA FALTANDO
+from django.urls import reverse
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
@@ -26,7 +26,11 @@ from .models import (
     TipoAdvertencia,
     Extintor, 
     InspecaoExtintor,
-    FotoInspecao
+    FotoInspecao,
+    # Novos modelos de equipamentos
+    Equipamento, 
+    InspecaoEquipamento,
+    ArquivoInspecao
 )
 
 # --- IMPORTAÇÃO DOS FORMULÁRIOS ---
@@ -41,7 +45,10 @@ from .forms import (
     TipoAdvertenciaForm, 
     AdvertenciaForm,
     ExtintorForm, 
-    InspecaoExtintorForm
+    InspecaoExtintorForm,
+    # Novos formulários
+    EquipamentoForm,
+    InspecaoEquipamentoForm
 )
 
 # --- VIEWS DE AUTENTICAÇÃO E DASHBOARD ---
@@ -392,12 +399,9 @@ def gerar_qrcode(request, pk):
     empresa = request.user.perfil.empresa
     extintor = get_object_or_404(Extintor, pk=pk, empresa=empresa)
     
-    # 1. VERIFICA SE JÁ EXISTE O QR CODE SALVO
     if not extintor.qrcode_imagem:
-        # Gera a URL completa
         url_destino = request.build_absolute_uri(reverse('extintor_mobile', args=[pk]))
         
-        # Cria a imagem
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -408,7 +412,6 @@ def gerar_qrcode(request, pk):
         qr.make(fit=True)
         img = qr.make_image(fill_color="black", back_color="white")
         
-        # Salva na memória e no banco
         buffer = BytesIO()
         img.save(buffer, format="PNG")
         filename = f'qrcode_extintor_{extintor.id}.png'
@@ -417,7 +420,6 @@ def gerar_qrcode(request, pk):
         buffer.seek(0)
         return HttpResponse(buffer, content_type="image/png")
     else:
-        # RETORNA A IMAGEM JÁ SALVA
         return HttpResponse(extintor.qrcode_imagem, content_type="image/png")
 
 @login_required
@@ -432,3 +434,72 @@ def extintor_mobile(request, pk):
     extintor = get_object_or_404(Extintor, pk=pk, empresa=empresa)
     ultimas_inspecoes = extintor.inspecoes.all().order_by('-data_inspecao')[:3]
     return render(request, 'extintores/mobile_scan.html', {'ext': extintor, 'ultimas_inspecoes': ultimas_inspecoes})
+
+# --- VIEWS DE OUTROS EQUIPAMENTOS (HIDRANTES, ALARMES, ETC) ---
+
+@login_required
+def dashboard_equipamentos(request):
+    empresa = request.user.perfil.empresa
+    equipamentos = Equipamento.objects.filter(empresa=empresa).order_by('tipo', 'localizacao')
+    
+    tipo_filter = request.GET.get('tipo')
+    if tipo_filter:
+        equipamentos = equipamentos.filter(tipo=tipo_filter)
+
+    return render(request, 'equipamentos/dashboard.html', {
+        'equipamentos': equipamentos
+    })
+
+@login_required
+def criar_editar_equipamento(request, pk=None):
+    empresa = request.user.perfil.empresa
+    equipamento = get_object_or_404(Equipamento, pk=pk, empresa=empresa) if pk else None
+    
+    if request.method == 'POST':
+        form = EquipamentoForm(empresa.id, request.POST, request.FILES, instance=equipamento)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.empresa = empresa
+            obj.save()
+            return redirect('dashboard_equipamentos')
+    else:
+        form = EquipamentoForm(empresa.id, instance=equipamento)
+    
+    return render(request, 'equipamentos/form.html', {'form': form})
+
+@login_required
+def inspecionar_equipamento(request, pk):
+    empresa = request.user.perfil.empresa
+    equipamento = get_object_or_404(Equipamento, pk=pk, empresa=empresa)
+    
+    if request.method == 'POST':
+        # form = InspecaoEquipamentoForm(request.POST, request.FILES) já valida os arquivos via forms.py
+        form = InspecaoEquipamentoForm(request.POST, request.FILES) 
+        
+        if form.is_valid():
+            inspecao = form.save(commit=False)
+            inspecao.equipamento = equipamento
+            inspecao.save()
+            
+            # Recupera a lista de arquivos para salvar no modelo auxiliar
+            # A validação e limpeza já foram feitas pelo form
+            arquivos = request.FILES.getlist('arquivos') 
+            for f in arquivos:
+                ArquivoInspecao.objects.create(inspecao=inspecao, arquivo=f)
+
+            return redirect('historico_equipamento', pk=equipamento.pk)
+    else:
+        form = InspecaoEquipamentoForm(initial={'responsavel': request.user.username})
+        
+    return render(request, 'equipamentos/inspecao_form.html', {'form': form, 'equipamento': equipamento})
+
+@login_required
+def historico_equipamento(request, pk):
+    empresa = request.user.perfil.empresa
+    equipamento = get_object_or_404(Equipamento, pk=pk, empresa=empresa)
+    inspecoes = equipamento.inspecoes.all().order_by('-data_inspecao')
+    
+    return render(request, 'equipamentos/historico.html', {
+        'equipamento': equipamento, 
+        'inspecoes': inspecoes
+    })

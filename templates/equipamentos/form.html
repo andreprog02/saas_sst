@@ -1,0 +1,16 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container mt-4" style="max-width: 600px;">
+    <div class="card">
+        <div class="card-header bg-primary text-white">Cadastrar Equipamento</div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-success w-100">Salvar</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script>document.querySelectorAll('input, select').forEach(e => e.classList.add('form-control'));</script>
+{% endblock %}

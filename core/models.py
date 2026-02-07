@@ -203,3 +203,74 @@ class FotoInspecao(models.Model):
 
     def __str__(self):
         return f"Foto da inspeção {self.inspecao.id}"
+    
+
+class Equipamento(models.Model):
+    TIPOS_EQUIPAMENTO = [
+        ('HIDRANTE', 'Hidrante'),
+        ('MANGUEIRA', 'Mangueira de Incêndio'),
+        ('ALARME', 'Alarme / Botoeira'),
+        ('LUZ', 'Iluminação de Emergência'),
+        ('PLACA', 'Sinalização / Placa'),
+        ('PORTA', 'Porta Corta-Fogo'),
+        ('OUTRO', 'Outros'),
+    ]
+    
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    tipo = models.CharField(max_length=20, choices=TIPOS_EQUIPAMENTO, verbose_name="Tipo de Equipamento")
+    nome = models.CharField(max_length=100, verbose_name="Identificação", help_text="Ex: Hidrante 01, Luz do Corredor")
+    localizacao = models.ForeignKey(Localizacao, on_delete=models.PROTECT, verbose_name="Localização")
+    
+    # Dados de Validade/Manutenção
+    data_instalacao = models.DateField(null=True, blank=True, verbose_name="Data de Instalação")
+    data_validade = models.DateField(null=True, blank=True, verbose_name="Validade / Próxima Manutenção")
+    
+    # Detalhes Técnicos (Campos genéricos que servem para vários tipos)
+    especificacao = models.CharField(max_length=255, blank=True, verbose_name="Especificação", help_text="Ex: 15 metros (para mangueira), 30 LEDs (para luz)")
+    ativo = models.BooleanField(default=True, verbose_name="Ativo?")
+    
+    imagem = models.ImageField(upload_to='outros_equipamentos/', blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.nome}"
+
+    @property
+    def status_validade(self):
+        """Retorna alerta se estiver vencendo em 30 dias"""
+        if not self.data_validade:
+            return "ok"
+        dias = (self.data_validade - date.today()).days
+        if dias < 0: return "vencido"
+        if dias <= 30: return "alerta"
+        return "ok"
+
+# Modelo de Inspeção para esses equipamentos
+class InspecaoEquipamento(models.Model):
+    equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE, related_name='inspecoes')
+    data_inspecao = models.DateField(default=timezone.now)
+    responsavel = models.CharField(max_length=150)
+    
+    # Checklist genérico (aplica-se a quase tudo)
+    item_integro = models.BooleanField(default=True, verbose_name="Item Íntegro/Sem Danos?")
+    acesso_livre = models.BooleanField(default=True, verbose_name="Acesso Livre?")
+    sinalizacao_ok = models.BooleanField(default=True, verbose_name="Sinalização OK?")
+    teste_funcional = models.BooleanField(default=True, verbose_name="Teste de Funcionamento OK?")
+    
+    observacoes = models.TextField(blank=True)
+    
+    def __str__(self):
+        return f"Inspeção {self.equipamento} em {self.data_inspecao}"
+    
+class ArquivoInspecao(models.Model):
+    inspecao = models.ForeignKey(InspecaoEquipamento, on_delete=models.CASCADE, related_name='arquivos')
+    arquivo = models.FileField(upload_to='inspecoes_equipamentos/', verbose_name="Arquivo/Foto")
+    data_upload = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Arquivo da inspeção {self.inspecao.id}"
+
+    @property
+    def eh_imagem(self):
+        """Retorna True se a extensão for de imagem"""
+        ext = os.path.splitext(self.arquivo.name)[1].lower()
+        return ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']
