@@ -1,44 +1,110 @@
 {% extends 'dashboard.html' %}
+{% load static %}
+
+{% block title %}Estoque de EPIs{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>📦 Estoque de EPIs</h2>
+<div class="container-fluid px-4">
+    
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
         <div>
-            <a href="{% url 'gerenciar_tipos' %}" class="btn btn-outline-secondary btn-sm">Gerir Tipos</a>
-            <a href="{% url 'gerenciar_locais' %}" class="btn btn-outline-secondary btn-sm">Gerir Locais</a>
-            <a href="{% url 'criar_epi' %}" class="btn btn-primary">+ Novo EPI</a>
+            <h1>📦 Estoque de EPIs</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Estoque</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'config_tipos_epi' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-tags"></i> Gerir Categorias (Antigo Tipos)
+            </a>
+            <a href="{% url 'config_locais' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-map-marker-alt"></i> Gerir Locais
+            </a>
+            <a href="{% url 'novo_epi' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Novo EPI
+            </a>
         </div>
     </div>
-    <div class="card p-3">
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>Tipo</th>
-                    <th>CA</th>
-                    <th>Tamanho</th>
-                    <th>Qtd</th>
-                    <th>Local</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for epi in epis %}
-                <tr>
-                    <td>{{ epi.tipo.nome }}</td>
-                    <td>{{ epi.ca }}</td>
-                    <td>{{ epi.tamanho }}</td>
-                    <td>{{ epi.quantidade }}</td>
-                    <td>{{ epi.local.nome }}</td>
-                    <td>
-                        <a href="{% url 'editar_epi' epi.pk %}" class="btn btn-sm btn-info">✏️</a>
-                        <a href="{% url 'deletar_epi' epi.pk %}" class="btn btn-sm btn-danger">🗑️</a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="6">Nenhum EPI cadastrado.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Itens Cadastrados</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Status</th>
+                            <th>Categoria / Modelo</th>
+                            <th>Marca</th>
+                            <th>CA</th>
+                            <th>Tamanho</th>
+                            <th>Validade CA</th>
+                            <th>Qtd</th>
+                            <th>Local</th>
+                            <th class="text-center" style="width: 120px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for epi in epis %}
+                        <tr>
+                            <td class="text-center align-middle">
+                                <span class="badge bg-{{ epi.status_estoque.cor }}" title="{{ epi.status_estoque.texto }}">
+                                    {{ epi.status_estoque.icon }}
+                                </span>
+                            </td>
+                            
+                            <td class="align-middle">
+                                <strong>{{ epi.categoria.nome|default:"-" }}</strong><br>
+                                <small class="text-muted">{{ epi.modelo|default:"Padrão" }}</small>
+                            </td>
+
+                            <td class="align-middle">{{ epi.marca.nome|default:"-" }}</td>
+                            
+                            <td class="align-middle font-monospace">{{ epi.ca }}</td>
+                            
+                            <td class="align-middle text-center">
+                                <span class="badge bg-secondary">{{ epi.tamanho.tamanho|default:"U" }}</span>
+                            </td>
+
+                            <td class="align-middle {% if epi.data_validade < hoje %}text-danger fw-bold{% endif %}">
+                                {{ epi.data_validade|date:"d/m/Y"|default:"-" }}
+                            </td>
+
+                            <td class="align-middle text-center fw-bold">{{ epi.quantidade }}</td>
+                            
+                            <td class="align-middle">{{ epi.local.nome|default:"-" }}</td>
+
+                            <td class="text-center align-middle">
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Entrada Rápida" onclick="location.href='{% url 'editar_epi' epi.id %}'">
+                                        <i class="fas fa-plus-circle"></i>
+                                    </button>
+                                    <a href="{% url 'editar_epi' epi.id %}" class="btn btn-sm btn-warning" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'deletar_epi' epi.id %}" class="btn btn-sm btn-danger" title="Excluir">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">
+                                <i class="fas fa-box-open fa-3x mb-3"></i><br>
+                                Nenhum EPI cadastrado no estoque.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

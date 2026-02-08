@@ -1,5 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
+from django.http import JsonResponse
+
 from django.db import transaction
 from .models import (
     Empresa, Funcionario, Setor, NormaRegulamentadora, 
@@ -9,15 +11,9 @@ from .models import (
     Equipamento, InspecaoEquipamento,
     ControleVacina, EntregaEPI, TreinamentoFuncionario,
     Afastamento, AcidenteTrabalho, ProdutoQuimico,
-    TipoEspecialidade, Hospital # <-- IMPORTANTE
+    TipoEspecialidade, Hospital,
+    CategoriaEPI, MarcaEPI, TamanhoEPI, MovimentacaoEstoque
 )
-
-# 1. Adicione ProdutoQuimico nos imports do topo:
-from .models import (
-    # ... outros models ...
-    ProdutoQuimico
-)
-
 
 # --- WIDGETS ---
 class MultipleFileInput(forms.ClearableFileInput):
@@ -80,6 +76,7 @@ class SetorForm(forms.ModelForm):
     vacinas_padrao = forms.ModelMultipleChoiceField(
         queryset=Vacina.objects.none(), widget=forms.CheckboxSelectMultiple, required=False, label="Vacinas Exigidas"
     )
+    # Mantido para compatibilidade, mas idealmente usaria o novo modelo de EPI se necessário
     epis_obrigatorios = forms.ModelMultipleChoiceField(
         queryset=TipoEPI.objects.none(), widget=forms.CheckboxSelectMultiple, required=False, label="EPIs Obrigatórios (Tipos)"
     )
@@ -110,7 +107,9 @@ class FuncionarioForm(forms.ModelForm):
         if empresa_id:
             self.fields['setor'].queryset = Setor.objects.filter(empresa_id=empresa_id)
 
-# 4. EPIs
+# 4. EPIs (ANTIGOS E NOVOS)
+
+# -- Forms de Compatibilidade (Restaurados para corrigir o erro) --
 class TipoEPIForm(forms.ModelForm):
     class Meta:
         model = TipoEPI
@@ -120,18 +119,62 @@ class LocalizacaoForm(forms.ModelForm):
     class Meta:
         model = Localizacao
         fields = ['nome']
+# -------------------------------------------------------------
+
+# -- Novos Forms do Estoque Avançado --
+class CategoriaEPIForm(forms.ModelForm):
+    class Meta:
+        model = CategoriaEPI
+        fields = ['nome']
+
+class MarcaEPIForm(forms.ModelForm):
+    class Meta:
+        model = MarcaEPI
+        fields = ['nome']
+
+class TamanhoEPIForm(forms.ModelForm):
+    class Meta:
+        model = TamanhoEPI
+        fields = ['tamanho']
 
 class EPIForm(forms.ModelForm):
     class Meta:
         model = EPI
-        fields = ['tipo', 'local', 'codigo_unico', 'tamanho', 'ca', 'quantidade', 'data_validade']
-        widgets = {'data_validade': forms.DateInput(attrs={'type': 'date'})}
+        fields = [
+            'categoria', 'marca', 'modelo', 'tamanho', 
+            'ca', 'quantidade_minima', 'data_validade', 'local'
+        ]
+        widgets = {
+            'data_validade': forms.DateInput(attrs={'type': 'date'}),
+            'ca': forms.NumberInput(attrs={'min': 0}),
+            'quantidade_minima': forms.NumberInput(attrs={'min': 0}),
+        }
 
     def __init__(self, empresa_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if empresa_id:
-            self.fields['tipo'].queryset = TipoEPI.objects.filter(empresa_id=empresa_id)
+            self.fields['categoria'].queryset = CategoriaEPI.objects.filter(empresa_id=empresa_id)
+            self.fields['marca'].queryset = MarcaEPI.objects.filter(empresa_id=empresa_id)
+            self.fields['tamanho'].queryset = TamanhoEPI.objects.filter(empresa_id=empresa_id)
             self.fields['local'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['categoria'].queryset = CategoriaEPI.objects.filter(empresa_id=empresa_id)
+            self.fields['marca'].queryset = MarcaEPI.objects.filter(empresa_id=empresa_id)
+            self.fields['tamanho'].queryset = TamanhoEPI.objects.filter(empresa_id=empresa_id)
+            self.fields['local'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+
+class EstoqueEntradaForm(forms.ModelForm):
+    class Meta:
+        model = MovimentacaoEstoque
+        fields = ['quantidade', 'data_movimento', 'observacao']
+        widgets = {
+            'data_movimento': forms.DateInput(attrs={'type': 'date'}),
+            'observacao': forms.TextInput(attrs={'placeholder': 'Ex: Compra Nota Fiscal 123'}),
+            'quantidade': forms.NumberInput(attrs={'min': 1}),
+        }
 
 # 5. ADVERTÊNCIAS
 class TipoAdvertenciaForm(forms.ModelForm):
@@ -268,7 +311,6 @@ class AcidenteTrabalhoForm(forms.ModelForm):
             'descricao_motivo': forms.Textarea(attrs={'rows': 3}),
         }
 
-
 class ProdutoQuimicoForm(forms.ModelForm):
     class Meta:
         model = ProdutoQuimico
@@ -283,23 +325,6 @@ class ProdutoQuimicoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if empresa_id:
             self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
-
-
-class ProdutoQuimicoForm(forms.ModelForm):
-    class Meta:
-        model = ProdutoQuimico
-        exclude = ['empresa', 'criado_em']
-        widgets = {
-            'data_fabricacao': forms.DateInput(attrs={'type': 'date'}),
-            'data_validade': forms.DateInput(attrs={'type': 'date'}),
-            'riscos': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Descreva os riscos conforme rótulo ou FISPQ...'}),
-        }
-
-    def __init__(self, empresa_id, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if empresa_id:
-            self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
-
 
 class TipoEspecialidadeForm(forms.ModelForm):
     class Meta:
@@ -320,3 +345,33 @@ class HospitalForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if empresa_id:
             self.fields['especialidades'].queryset = TipoEspecialidade.objects.filter(empresa_id=empresa_id)
+
+def api_criar_categoria_epi(request):
+    if request.method == "POST":
+        form = CategoriaEPIForm(request.POST)
+        if form.is_valid():
+            cat = form.save(commit=False)
+            cat.empresa = request.user.perfil.empresa
+            cat.save()
+            return JsonResponse({'success': True, 'id': cat.id, 'nome': cat.nome})
+    return JsonResponse({'success': False, 'error': 'Erro ao salvar'})
+
+def api_criar_marca_epi(request):
+    if request.method == "POST":
+        form = MarcaEPIForm(request.POST)
+        if form.is_valid():
+            marca = form.save(commit=False)
+            marca.empresa = request.user.perfil.empresa
+            marca.save()
+            return JsonResponse({'success': True, 'id': marca.id, 'nome': marca.nome})
+    return JsonResponse({'success': False, 'error': 'Erro ao salvar'})
+
+def api_criar_tamanho_epi(request):
+    if request.method == "POST":
+        form = TamanhoEPIForm(request.POST)
+        if form.is_valid():
+            tam = form.save(commit=False)
+            tam.empresa = request.user.perfil.empresa
+            tam.save()
+            return JsonResponse({'success': True, 'id': tam.id, 'nome': tam.tamanho})
+    return JsonResponse({'success': False, 'error': 'Erro ao salvar'})

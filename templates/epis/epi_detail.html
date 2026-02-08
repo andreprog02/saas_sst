@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cadastro de EPI{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">{% if form.instance.pk %}Editar{% else %}Novo{% endif %} EPI</h1>
+    
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header">
+            <i class="fas fa-hard-hat me-1"></i> Dados do Equipamento
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Categoria</label>
+                        <div class="input-group">
+                            {{ form.categoria }} <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#modalCategoria">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        {{ form.categoria.errors }}
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Marca</label>
+                        <div class="input-group">
+                            {{ form.marca }}
+                            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#modalMarca">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        {{ form.marca.errors }}
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Tamanho</label>
+                        <div class="input-group">
+                            {{ form.tamanho }}
+                            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#modalTamanho">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        {{ form.tamanho.errors }}
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.modelo.label }}</label>
+                        {{ form.modelo }} {{ form.modelo.errors }}
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">{{ form.ca.label }}</label>
+                        {{ form.ca }}
+                        {{ form.ca.errors }}
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">{{ form.data_validade.label }}</label>
+                        {{ form.data_validade }}
+                        {{ form.data_validade.errors }}
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ form.quantidade_minima.label }}</label>
+                        {{ form.quantidade_minima }}
+                        {{ form.quantidade_minima.errors }}
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ form.local.label }}</label>
+                        {{ form.local }}
+                        {{ form.local.errors }}
+                    </div>
+                </div>
+
+                <hr>
+                <div class="d-flex justify-content-end">
+                    <a href="{% url 'lista_epis' %}" class="btn btn-secondary me-2">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Salvar EPI</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCategoria" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Categoria</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="inputNomeCategoria" class="form-control" placeholder="Ex: Capacete, Luva...">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="salvarRapido('categoria')">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalMarca" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Marca</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="inputNomeMarca" class="form-control" placeholder="Ex: 3M, Danny...">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="salvarRapido('marca')">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTamanho" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Novo Tamanho</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="inputNomeTamanho" class="form-control" placeholder="Ex: G, 42, Único...">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="salvarRapido('tamanho')">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function salvarRapido(tipo) {
+        let url = "";
+        let valor = "";
+        let campoSelectId = "";
+        let formData = new FormData();
+
+        if (tipo === 'categoria') {
+            url = "{% url 'api_criar_categoria_epi' %}";
+            valor = document.getElementById('inputNomeCategoria').value;
+            campoSelectId = "id_categoria"; // ID padrão do Django
+            formData.append('nome', valor);
+        } else if (tipo === 'marca') {
+            url = "{% url 'api_criar_marca_epi' %}";
+            valor = document.getElementById('inputNomeMarca').value;
+            campoSelectId = "id_marca";
+            formData.append('nome', valor);
+        } else if (tipo === 'tamanho') {
+            url = "{% url 'api_criar_tamanho_epi' %}";
+            valor = document.getElementById('inputNomeTamanho').value;
+            campoSelectId = "id_tamanho";
+            formData.append('tamanho', valor);
+        }
+
+        if (!valor) {
+            alert("Digite um valor!");
+            return;
+        }
+
+        fetch(url, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Adiciona a nova opção no Select e a seleciona
+                let select = document.getElementById(campoSelectId);
+                let option = new Option(data.nome, data.id);
+                select.add(option);
+                select.value = data.id;
+
+                // Fecha o modal
+                let modalEl = document.getElementById('modal' + tipo.charAt(0).toUpperCase() + tipo.slice(1));
+                let modalInstance = bootstrap.Modal.getInstance(modalEl);
+                modalInstance.hide();
+                
+                // Limpa o input
+                if(tipo === 'tamanho') document.getElementById('inputNomeTamanho').value = "";
+                else if(tipo === 'marca') document.getElementById('inputNomeMarca').value = "";
+                else document.getElementById('inputNomeCategoria').value = "";
+                
+            } else {
+                alert("Erro ao salvar: " + (data.error || "Erro desconhecido"));
+            }
+        })
+        .catch(error => console.error("Erro:", error));
+    }
+</script>
+
+<style>
+    select, input[type="text"], input[type="number"], input[type="date"] {
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #212529;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+    }
+    .input-group select {
+        flex: 1 1 auto;
+        width: 1%;
+        min-width: 0;
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+</style>
+{% endblock %}
