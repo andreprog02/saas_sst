@@ -1,166 +1,325 @@
 {% extends 'dashboard.html' %}
+{% load static %}
+
+{% block title %}Gestão de Extintores{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<style>
+    /* --- Estilos Lovable / Shadcn (Refinado) --- */
     
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card text-white bg-success mb-3 h-100">
-                <div class="card-body">
-                    <h5 class="card-title display-6 fw-bold">{{ total_ativos }}</h5>
-                    <p class="card-text">Extintores Ativos</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-warning mb-3 h-100">
-                <div class="card-body">
-                    <h5 class="card-title display-6 fw-bold">{{ vencendo_recarga }}</h5>
-                    <p class="card-text">Vencendo Recarga (30 dias)</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-danger mb-3 h-100">
-                <div class="card-body">
-                    <h5 class="card-title display-6 fw-bold">{{ vencendo_hidro }}</h5>
-                    <p class="card-text">Vencendo Teste Hidro.</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-info mb-3 h-100">
-                <div class="card-body">
-                    <h5 class="card-title display-6 fw-bold">{{ qtd_pendente_inspecao }}</h5>
-                    <p class="card-text">Sem Inspeção Mensal</p>
-                </div>
-            </div>
-        </div>
-    </div>
+    /* KPI Cards */
+    .stat-card-fire {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        transition: all 0.2s ease-in-out;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .stat-card-fire:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.08);
+        border-color: #cbd5e1;
+    }
+    .stat-icon-fire {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="text-primary"><i class="bi bi-fire"></i> Gestão de Extintores</h3>
+    /* Badges de Agente */
+    .badge-agent {
+        padding: 5px 8px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid transparent;
+        white-space: nowrap; /* Impede quebra de linha no badge */
+    }
+    .badge-agent-agua { background-color: #f0f9ff; color: #0284c7; border-color: #bae6fd; }
+    .badge-agent-pqs  { background-color: #fff7ed; color: #ea580c; border-color: #fed7aa; }
+    .badge-agent-co2  { background-color: #f8fafc; color: #475569; border-color: #e2e8f0; }
+
+    /* Avatar */
+    .fire-avatar {
+        width: 42px;
+        height: 42px;
+        background-color: #fef2f2;
+        color: #ef4444;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    /* Tabela */
+    .table-fire { border-collapse: separate; border-spacing: 0; }
+    .table-fire th {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        color: #64748b;
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 1rem;
+        vertical-align: middle;
+    }
+    .table-fire td {
+        padding: 1rem;
+        vertical-align: middle; /* Alinhamento vertical centralizado */
+        color: #334155;
+        border-bottom: 1px solid #f1f5f9;
+        background-color: #fff;
+        height: 70px; /* Altura fixa mínima para consistência */
+    }
+    .table-fire tr:last-child td { border-bottom: none; }
+    .table-fire tbody tr:hover { background-color: #f8fafc; }
+
+    /* Search */
+    .search-input {
+        padding-left: 2.5rem;
+        border-radius: 10px;
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+    }
+</style>
+
+<div class="container-fluid px-4 py-4">
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-5">
         <div>
-            <a href="{% url 'exportar_extintores' %}" class="btn btn-outline-success">📊 Baixar Excel</a>
-            <a href="{% url 'criar_extintor' %}" class="btn btn-primary fw-bold">+ Novo Extintor</a>
+            <h2 class="fw-bold text-dark mb-1" style="letter-spacing: -0.5px;">Gestão de Extintores</h2>
+            <p class="text-muted mb-0">Controle de validade de recarga, testes hidrostáticos e inspeções periódicas.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-white border shadow-sm fw-medium text-muted" onclick="alert('Gerador de QR Code em breve!')">
+                <i class="fas fa-qrcode me-2"></i> QR Codes
+            </button>
+            <a href="{% url 'novo_extintor' %}" class="btn btn-danger shadow-sm fw-medium px-4 border-0" style="background-color: #dc2626;">
+                <i class="fas fa-plus me-2"></i> Novo Extintor
+            </a>
         </div>
     </div>
 
-    <div class="card mb-4 p-3 bg-light border-0">
-        <form method="get" class="row g-2 align-items-center">
-            <div class="col-md-5">
-                <input type="text" name="search" class="form-control" placeholder="🔍 Buscar por Patrimônio ou Local..." value="{{ request.GET.search }}">
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card-fire">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase mb-1">Total Instalado</div>
+                        <h2 class="fw-bold text-dark mb-0 display-6">{{ extintores.count }}</h2>
+                    </div>
+                    <div class="stat-icon-fire bg-danger bg-opacity-10 text-danger">
+                        <i class="fas fa-fire-extinguisher"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="text-success small fw-bold"><i class="fas fa-check-circle me-1"></i>Operacionais</span>
+                </div>
             </div>
-            <div class="col-md-3">
-                <select name="status" class="form-select">
-                    <option value="">Todos os Status</option>
-                    <option value="ATIVO" {% if request.GET.status == 'ATIVO' %}selected{% endif %}>Ativos</option>
-                    <option value="MANUTENCAO" {% if request.GET.status == 'MANUTENCAO' %}selected{% endif %}>Em Manutenção</option>
-                </select>
+        </div>
+
+        <div class="col-md-4">
+            <div class="stat-card-fire">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase mb-1">Recargas a Vencer</div>
+                        <h2 class="fw-bold text-dark mb-0 display-6">
+                            {% with vencendo=0 %}
+                                {% for e in extintores %}{% if e.alerta_manutencao %}{{ 1|add:vencendo }}{% endif %}{% endfor %}
+                                {% if vencendo > 0 %}<span class="text-warning">{{ vencendo }}</span>{% else %}<span class="text-success">0</span>{% endif %}
+                            {% endwith %}
+                        </h2>
+                    </div>
+                    <div class="stat-icon-fire bg-warning bg-opacity-10 text-warning">
+                        <i class="fas fa-stopwatch"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="text-muted small">Próximos 30 dias</span>
+                </div>
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-secondary w-100">Filtrar</button>
+        </div>
+
+        <div class="col-md-4">
+            <div class="stat-card-fire">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase mb-1">Em Manutenção</div>
+                        <h2 class="fw-bold text-dark mb-0 display-6">
+                            {% with manutencao=0 %}
+                                {% for e in extintores %}{% if e.situacao == 'MANUTENCAO' %}{{ 1|add:manutencao }}{% endif %}{% endfor %}
+                                <span class="text-secondary">{{ manutencao }}</span>
+                            {% endwith %}
+                        </h2>
+                    </div>
+                    <div class="stat-icon-fire bg-secondary bg-opacity-10 text-secondary">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="text-muted small">Equipamentos retirados</span>
+                </div>
             </div>
-            <div class="col-md-2">
-                <a href="{% url 'dashboard_extintores' %}" class="btn btn-outline-secondary w-100">Limpar</a>
-            </div>
-        </form>
+        </div>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card border-0 shadow-sm mb-4 rounded-4 overflow-hidden">
+        <div class="card-body p-2 bg-white">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-8 position-relative">
+                    <i class="fas fa-search position-absolute text-muted" style="left: 20px; top: 50%; transform: translateY(-50%); font-size: 0.9rem;"></i>
+                    <input type="text" class="form-control border-0 search-input ps-5" placeholder="Buscar por código patrimonial, localização ou número de série...">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <select class="form-select border-0 bg-light fw-medium text-secondary shadow-none" style="border-radius: 10px;">
+                        <option value="">Todos os Tipos</option>
+                        <option value="AGUA">Água (AP)</option>
+                        <option value="PQS">Pó Químico (PQS)</option>
+                        <option value="CO2">Gás Carbônico (CO2)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-dark">
+            <table class="table table-fire mb-0">
+                <thead>
                     <tr>
-                        <th>Patrimônio</th>
-                        <th>Local</th>
-                        <th>Tipo / Capacidade</th>
-                        <th>Vencimento Recarga</th>
+                        <th style="width: 25%;">Identificação</th>
+                        <th style="width: 20%;">Agente (Tipo)</th>
+                        <th>Localização</th>
+                        <th>Última Inspeção</th>
+                        <th>Próxima Recarga</th>
                         <th>Status</th>
-                        <th class="text-end" style="min-width: 200px;">Ações</th>
+                        <th class="text-end pe-4">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for ext in extintores %}
+                    {% for item in extintores %}
                     <tr>
                         <td>
-                            <strong>{{ ext.codigo_patrimonial }}</strong>
-                            <br><small class="text-muted">{{ ext.numero_serie }}</small>
-                        </td>
-                        <td>{{ ext.localizacao.nome }}</td>
-                        <td>
-                            <span class="badge bg-secondary">{{ ext.classe }}</span>
-                            {{ ext.get_agente_display }} - {{ ext.capacidade }}
-                        </td>
-                        <td>
-                            {% if ext.alerta_manutencao %}
-                                <span class="text-danger fw-bold">
-                                    {{ ext.data_proxima_manutencao|date:"d/m/Y" }}
-                                    <i class="bi bi-exclamation-triangle-fill" title="Vence em breve!"></i>
-                                </span>
-                            {% else %}
-                                <span class="text-success">{{ ext.data_proxima_manutencao|date:"d/m/Y" }}</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if ext.situacao == 'ATIVO' %}
-                                <span class="badge bg-success">Ativo</span>
-                            {% elif ext.situacao == 'MANUTENCAO' %}
-                                <span class="badge bg-warning text-dark">Manutenção</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ ext.get_situacao_display }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-end">
-                            <div class="btn-group" role="group">
-                                <a href="{% url 'registrar_inspecao' ext.id %}" class="btn btn-sm btn-outline-success" title="Checklist Mensal">
-                                    ✅
-                                </a>
-                                <a href="{% url 'historico_extintor' ext.id %}" class="btn btn-sm btn-outline-secondary" title="Histórico">
-                                    📜
-                                </a>
-                                <a href="{% url 'editar_extintor' ext.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
-                                    ✏️
-                                </a>
-                                <button type="button" class="btn btn-sm btn-dark" data-bs-toggle="modal" data-bs-target="#modalQR{{ ext.id }}" title="Gerar Etiqueta">
-                                    📱 QR
-                                </button>
-                            </div>
-
-                            <div class="modal fade" id="modalQR{{ ext.id }}" tabindex="-1" aria-hidden="true">
-                                <div class="modal-dialog modal-dialog-centered">
-                                    <div class="modal-content text-center">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title">Etiqueta: {{ ext.codigo_patrimonial }}</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <p class="text-muted small mb-2">Imprima e cole no corpo do extintor para acesso rápido.</p>
-                                            
-                                            <div class="border p-3 d-inline-block rounded bg-white">
-                                                <img src="{% url 'gerar_qrcode' ext.id %}" class="img-fluid" style="max-width: 200px; height: auto;">
-                                            </div>
-                                            
-                                            <h5 class="mt-3 fw-bold">{{ ext.localizacao.nome }}</h5>
-                                            <p class="mb-0 badge bg-secondary">{{ ext.get_agente_display }}</p>
-                                        </div>
-                                        <div class="modal-footer justify-content-center">
-                                            <button type="button" class="btn btn-primary" onclick="window.print()">
-                                                🖨️ Imprimir Página
-                                            </button>
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                                        </div>
-                                    </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="fire-avatar">
+                                    <i class="fas fa-fire-extinguisher"></i>
+                                </div>
+                                <div>
+                                    <a href="{% url 'editar_extintor' item.id %}" class="fw-bold text-dark text-decoration-none d-block">
+                                        {{ item.codigo_patrimonial }}
+                                    </a>
+                                    <span class="text-muted small">
+                                        Série: {{ item.numero_serie|default:"-" }}
+                                    </span>
                                 </div>
                             </div>
-                            </td>
+                        </td>
+
+                        <td>
+                            <div class="d-flex flex-column align-items-start gap-1">
+                                {% if item.agente == 'AGUA' %}
+                                    <div class="badge-agent badge-agent-agua"><i class="fas fa-tint"></i> Água</div>
+                                {% elif item.agente == 'PQS' %}
+                                    <div class="badge-agent badge-agent-pqs"><i class="fas fa-wind"></i> PQS</div>
+                                {% elif item.agente == 'CO2' %}
+                                    <div class="badge-agent badge-agent-co2"><i class="fas fa-cloud"></i> CO2</div>
+                                {% else %}
+                                    <div class="badge-agent bg-light text-dark border">{{ item.get_agente_display }}</div>
+                                {% endif %}
+                                <span class="small text-muted">{{ item.capacidade }} kg/L • Classe {{ item.classe }}</span>
+                            </div>
+                        </td>
+
+                        <td>
+                            <div class="text-dark fw-medium">
+                                {{ item.localizacao.nome|default:"Não Definido" }}
+                            </div>
+                        </td>
+
+                        <td>
+                            {% if item.inspecoes.last %}
+                                <div class="text-dark fw-medium">{{ item.inspecoes.last.data_inspecao|date:"d/m/Y" }}</div>
+                            {% else %}
+                                <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <div class="text-dark fw-medium">{{ item.data_proxima_manutencao|date:"d/m/Y" }}</div>
+                            {% if item.alerta_manutencao %}
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20 mt-1">
+                                    Venceu
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if item.situacao == 'ATIVO' %}
+                                <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">
+                                    Operacional
+                                </span>
+                            {% elif item.situacao == 'MANUTENCAO' %}
+                                <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1">
+                                    Manutenção
+                                </span>
+                            {% else %}
+                                <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border px-2 py-1">
+                                    {{ item.get_situacao_display }}
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-end pe-4">
+                            <div class="dropdown">
+                                <button class="btn btn-light btn-sm rounded-circle shadow-sm border" type="button" data-bs-toggle="dropdown" style="width: 32px; height: 32px;">
+                                    <i class="fas fa-ellipsis-v text-muted"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2" style="border-radius: 12px;">
+                                    <li><h6 class="dropdown-header text-uppercase small fw-bold">Gerenciar</h6></li>
+                                    <li>
+                                        <a class="dropdown-item rounded-2 py-2" href="{% url 'inspecao_extintor' item.id %}">
+                                            <i class="fas fa-clipboard-check me-2 text-success"></i> Nova Inspeção
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item rounded-2 py-2" href="{% url 'editar_extintor' item.id %}">
+                                            <i class="fas fa-pen me-2 text-primary"></i> Editar Dados
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-5 text-muted">
-                            <h4>Nenhum extintor encontrado.</h4>
-                            <p>Cadastre novos equipamentos ou ajuste os filtros.</p>
-                            <a href="{% url 'criar_extintor' %}" class="btn btn-primary mt-2">Cadastrar Agora</a>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="d-flex flex-column align-items-center my-4">
+                                <div class="bg-light rounded-circle p-4 mb-3 text-muted">
+                                    <i class="fas fa-fire-extinguisher fa-3x opacity-25"></i>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">Nenhum extintor encontrado</h6>
+                                <p class="text-muted small mb-4">Comece cadastrando os equipamentos de combate a incêndio.</p>
+                                <a href="{% url 'novo_extintor' %}" class="btn btn-danger btn-sm px-4 py-2 rounded-pill fw-bold shadow-sm">
+                                    <i class="fas fa-plus me-2"></i>Cadastrar Primeiro
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -169,11 +328,4 @@
         </div>
     </div>
 </div>
-
-<script>
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
-    })
-</script>
 {% endblock %}

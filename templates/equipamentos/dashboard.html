@@ -1,68 +1,155 @@
 {% extends 'dashboard.html' %}
+{% load static %}
+
+{% block title %}Gestão de Equipamentos{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid px-4 py-4">
+    
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>🚒 Combate a Incêndio (Geral)</h2>
-        <a href="{% url 'criar_equipamento' %}" class="btn btn-primary fw-bold">+ Novo Equipamento</a>
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Equipamentos e Instalações</h2>
+            <p class="text-muted mb-0">Gerencie hidrantes, alarmes, luzes de emergência e outros itens.</p>
+        </div>
+        <a href="{% url 'novo_equipamento' %}" class="btn btn-primary shadow-sm px-4 py-2 fw-medium">
+            <i class="fas fa-plus me-2"></i> Novo Equipamento
+        </a>
     </div>
 
-    <div class="card p-3 shadow-sm">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Identificação</th>
-                        <th>Local</th>
-                        <th>Situação</th>
-                        <th style="width: 150px;">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in equipamentos %}
-                    <tr>
-                        <td>
-                            <span style="font-size: 1.2rem;">
-                                {% if item.tipo == 'HIDRANTE' %}💧{% elif item.tipo == 'ALARME' %}🚨{% elif item.tipo == 'LUZ' %}💡{% else %}🔧{% endif %}
-                            </span>
-                            {{ item.get_tipo_display }}
-                        </td>
-                        <td>
-                            <strong>{{ item.nome }}</strong>
-                            {% if item.especificacao %}
-                                <br><small class="text-muted">{{ item.especificacao }}</small>
-                            {% endif %}
-                        </td>
-                        <td>{{ item.localizacao.nome }}</td>
-                        <td>
-                            {% if item.status_validade == 'vencido' %}
-                                <span class="badge bg-danger">Vencido</span>
-                            {% elif item.status_validade == 'alerta' %}
-                                <span class="badge bg-warning text-dark">Atenção</span>
-                            {% else %}
-                                <span class="badge bg-success">OK</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div class="btn-group" role="group">
-                                <a href="{% url 'inspecionar_equipamento' item.id %}" class="btn btn-sm btn-outline-success" title="Nova Inspeção">✅</a>
-                                <a href="{% url 'historico_equipamento' item.id %}" class="btn btn-sm btn-outline-secondary" title="Ver Histórico">📜</a>
-                                <a href="{% url 'editar_equipamento' item.id %}" class="btn btn-sm btn-outline-primary" title="Editar">✏️</a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted p-4">
-                            Nenhum equipamento cadastrado ainda.
-                            <br>
-                            <a href="{% url 'criar_equipamento' %}" class="fw-bold text-primary" style="text-decoration: none;">Cadastre o primeiro aqui.</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="icon-square bg-primary bg-opacity-10 text-primary rounded-3 p-3">
+                        <i class="fas fa-tools fa-lg"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted text-uppercase small fw-bold mb-0">Total Cadastrado</h6>
+                        <h3 class="fw-bold text-dark mb-0">{{ equipamentos.count }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="icon-square bg-danger bg-opacity-10 text-danger rounded-3 p-3">
+                        <i class="fas fa-fire-hydrant fa-lg"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted text-uppercase small fw-bold mb-0">Hidrantes</h6>
+                        <h3 class="fw-bold text-dark mb-0">
+                            {% with qtd=0 %}{% for e in equipamentos %}{% if e.tipo == 'HIDRANTE' %}{{ 1|add:qtd }}{% endif %}{% endfor %}{{ equipamentos.count|default:"-" }}{% endwith %}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+            <h6 class="fw-bold text-primary mb-0"><i class="fas fa-list me-2"></i>Inventário Geral</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="min-width: 800px;">
+                    <thead class="bg-light text-muted small text-uppercase">
+                        <tr>
+                            <th class="ps-4">Equipamento / Nome</th>
+                            <th>Tipo</th>
+                            <th>Localização</th>
+                            <th>Validade / Próx. Inspeção</th>
+                            <th>Status Validade</th>
+                            <th class="text-end pe-4">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in equipamentos %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="avatar bg-light text-secondary rounded-circle d-flex align-items-center justify-content-center" style="width:40px; height:40px;">
+                                        {% if item.tipo == 'HIDRANTE' %}<i class="fas fa-faucet"></i>
+                                        {% elif item.tipo == 'ALARME' %}<i class="fas fa-bell"></i>
+                                        {% elif item.tipo == 'LUZ' %}<i class="fas fa-lightbulb"></i>
+                                        {% else %}<i class="fas fa-box"></i>{% endif %}
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'historico_equipamento' item.id %}" class="fw-bold text-dark text-decoration-none">
+                                            {{ item.nome }}
+                                        </a>
+                                        {% if item.qrcode_data %}
+                                            <div class="small text-muted"><i class="fas fa-qrcode me-1"></i> QR: {{ item.qrcode_data }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">{{ item.get_tipo_display }}</span>
+                            </td>
+                            <td>{{ item.localizacao.nome|default:"-" }}</td>
+                            <td>
+                                <div class="small">
+                                    {% if item.data_validade %}
+                                        <div class="mb-1"><i class="fas fa-calendar-alt me-1 text-muted"></i> Val: {{ item.data_validade|date:"d/m/Y" }}</div>
+                                    {% endif %}
+                                    {% if item.data_proxima_inspecao %}
+                                        <div><i class="fas fa-search me-1 text-muted"></i> Insp: {{ item.data_proxima_inspecao|date:"d/m/Y" }}</div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if item.data_validade %}
+                                    {% if item.status_validade == 'vencido' %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill">Vencido</span>
+                                    {% elif item.status_validade == 'alerta' %}
+                                        <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-2 rounded-pill">A Vencer</span>
+                                    {% else %}
+                                        <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill">Vigente</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light rounded-circle" type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                                        <li>
+                                            <a class="dropdown-item" href="{% url 'inspecao_equipamento' item.id %}">
+                                                <i class="fas fa-clipboard-check me-2 text-success"></i> Nova Inspeção
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{% url 'historico_equipamento' item.id %}">
+                                                <i class="fas fa-history me-2 text-primary"></i> Ver Histórico
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item" href="{% url 'editar_equipamento' item.id %}">
+                                                <i class="fas fa-edit me-2 text-secondary"></i> Editar
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="text-muted opacity-50 mb-2"><i class="fas fa-tools fa-3x"></i></div>
+                                <p class="fw-bold text-muted">Nenhum equipamento registrado.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

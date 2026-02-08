@@ -1,105 +1,73 @@
 from django import forms
 from django.contrib.auth.models import User
-from django.http import JsonResponse
+from django.forms import inlineformset_factory
 
-from django.db import transaction
 from .models import (
-    Empresa, Funcionario, Setor, NormaRegulamentadora, 
-    EPI, TipoEPI, Localizacao, Vacina, 
-    Advertencia, TipoAdvertencia,
-    Extintor, InspecaoExtintor,
-    Equipamento, InspecaoEquipamento,
-    ControleVacina, EntregaEPI, TreinamentoFuncionario,
-    Afastamento, AcidenteTrabalho, ProdutoQuimico,
-    TipoEspecialidade, Hospital,
-    CategoriaEPI, MarcaEPI, TamanhoEPI, MovimentacaoEstoque
+    Empresa, Funcionario, Setor, NormaRegulamentadora, RiscoOcupacional,
+    EPI, TipoEPI, CategoriaEPI, MarcaEPI, TamanhoEPI, Localizacao,
+    Vacina, ControleVacina, EntregaEPI, TreinamentoFuncionario,
+    Advertencia, TipoAdvertencia, Afastamento, AcidenteTrabalho,
+    Extintor, InspecaoExtintor, Equipamento, InspecaoEquipamento,
+    ProdutoQuimico, Hospital, TipoEspecialidade
 )
 
-# --- WIDGETS ---
-class MultipleFileInput(forms.ClearableFileInput):
-    allow_multiple_selected = True
+# --- CADASTRO E LOGIN ---
 
-class MultipleFileField(forms.FileField):
-    def to_python(self, data):
-        if not data: return None
-        if not isinstance(data, list):
-            if hasattr(data, 'chunks'): return [data]
-            return None
-        return data
-
-    def clean(self, data, initial=None):
-        if not data and self.required:
-            raise forms.ValidationError(self.error_messages['required'], code='required')
-        return data
-
-# 1. EMPRESA
-class CadastroSaaSForm(forms.Form):
-    username = forms.CharField(label="Seu Nome", max_length=150)
-    email_login = forms.EmailField(label="E-mail de Login")
+class CadastroSaaSForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, label="Senha")
-    nome_empresa = forms.CharField(label="Nome da Empresa")
-    cnpj = forms.CharField(label="CNPJ")
-    telefone = forms.CharField(label="Telefone")
-    email_empresa = forms.EmailField(label="E-mail da Empresa")
-    endereco = forms.CharField(widget=forms.Textarea(attrs={'rows': 3}), label="Endereço Completo")
+    confirm_password = forms.CharField(widget=forms.PasswordInput, label="Confirmar Senha")
+    nome_fantasia = forms.CharField(max_length=100, label="Nome da Empresa")
 
-    def save(self):
-        with transaction.atomic():
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password']
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password != confirm_password:
+            raise forms.ValidationError("As senhas não conferem.")
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password"])
+        if commit:
+            user.save()
             empresa = Empresa.objects.create(
-                nome_fantasia=self.cleaned_data['nome_empresa'],
-                razao_social=self.cleaned_data['nome_empresa'],
-                cnpj=self.cleaned_data['cnpj'],
-                telefone=self.cleaned_data['telefone'],
-                email_contato=self.cleaned_data['email_empresa'],
-                endereco=self.cleaned_data['endereco']
-            )
-            user = User.objects.create_user(
-                username=self.cleaned_data['email_login'],
-                email=self.cleaned_data['email_login'],
-                password=self.cleaned_data['password']
+                nome_fantasia=self.cleaned_data["nome_fantasia"],
+                email_contato=self.cleaned_data["email"]
             )
             from .models import PerfilUsuario
-            PerfilUsuario.objects.create(usuario=user, empresa=empresa, is_admin=True)
-            return user
+            PerfilUsuario.objects.create(user=user, empresa=empresa)
+        return user
 
-# 2. SETORES E VACINAS
-class VacinaForm(forms.ModelForm):
-    class Meta:
-        model = Vacina
-        fields = ['nome', 'descricao', 'meses_reforco']
-        widgets = {'descricao': forms.Textarea(attrs={'rows': 2})}
+# --- FUNCIONÁRIOS ---
 
-class SetorForm(forms.ModelForm):
-    nrs_obrigatorias = forms.ModelMultipleChoiceField(
-        queryset=NormaRegulamentadora.objects.all(), widget=forms.CheckboxSelectMultiple, required=False, label="NRs Aplicáveis"
-    )
-    vacinas_padrao = forms.ModelMultipleChoiceField(
-        queryset=Vacina.objects.none(), widget=forms.CheckboxSelectMultiple, required=False, label="Vacinas Exigidas"
-    )
-    # Mantido para compatibilidade, mas idealmente usaria o novo modelo de EPI se necessário
-    epis_obrigatorios = forms.ModelMultipleChoiceField(
-        queryset=TipoEPI.objects.none(), widget=forms.CheckboxSelectMultiple, required=False, label="EPIs Obrigatórios (Tipos)"
-    )
-
-    class Meta:
-        model = Setor
-        fields = ['nome', 'nrs_obrigatorias', 'vacinas_padrao', 'epis_obrigatorios', 'treinamentos']
-        widgets = {'treinamentos': forms.Textarea(attrs={'rows': 2})}
-
-    def __init__(self, user_empresa=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if user_empresa:
-            self.fields['vacinas_padrao'].queryset = Vacina.objects.filter(empresa=user_empresa)
-            self.fields['epis_obrigatorios'].queryset = TipoEPI.objects.filter(empresa=user_empresa)
-
-# 3. FUNCIONÁRIOS
 class FuncionarioForm(forms.ModelForm):
     class Meta:
         model = Funcionario
-        fields = ['nome', 'cpf', 'cargo', 'setor', 'data_admissao', 'situacao', 'motivo_afastamento', 'ativo']
+        fields = [
+            'foto',
+            'nome', 'cpf', 'rg', 'matricula',           
+            'data_nascimento', 'email', 'telefone',     
+            'cargo', 'setor', 'data_admissao',          
+            'situacao'                                  
+        ]
         widgets = {
-            'data_admissao': forms.DateInput(attrs={'type': 'date'}),
-            'motivo_afastamento': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Detalhes...'}),
+            'data_nascimento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_admissao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'cpf': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '000.000.000-00'}),
+            'rg': forms.TextInput(attrs={'class': 'form-control'}),
+            'matricula': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'telefone': forms.TextInput(attrs={'class': 'form-control'}),
+            'cargo': forms.TextInput(attrs={'class': 'form-control'}),
+            'setor': forms.Select(attrs={'class': 'form-select'}),
+            'situacao': forms.Select(attrs={'class': 'form-select'}),
         }
 
     def __init__(self, empresa_id, *args, **kwargs):
@@ -107,21 +75,90 @@ class FuncionarioForm(forms.ModelForm):
         if empresa_id:
             self.fields['setor'].queryset = Setor.objects.filter(empresa_id=empresa_id)
 
-# 4. EPIs (ANTIGOS E NOVOS)
+# --- SETORES ---
 
-# -- Forms de Compatibilidade (Restaurados para corrigir o erro) --
-class TipoEPIForm(forms.ModelForm):
+class SetorForm(forms.ModelForm):
+    normas = forms.ModelMultipleChoiceField(
+        queryset=NormaRegulamentadora.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Normas Regulamentadoras (NRs)"
+    )
+    riscos = forms.ModelMultipleChoiceField(
+        queryset=RiscoOcupacional.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Riscos Ocupacionais"
+    )
+
     class Meta:
-        model = TipoEPI
-        fields = ['nome']
+        model = Setor
+        fields = ['nome', 'descricao', 'responsavel']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'responsavel': forms.TextInput(attrs={'class': 'form-control'}),
+        }
 
-class LocalizacaoForm(forms.ModelForm):
+    def __init__(self, empresa, *args, **kwargs):
+        self.empresa = empresa
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields['normas'].initial = self.instance.normas.all()
+            self.fields['riscos'].initial = self.instance.riscos.all()
+
+    def save_m2m(self):
+        self.instance.normas.set(self.cleaned_data['normas'])
+        self.instance.riscos.set(self.cleaned_data['riscos'])
+
+# --- EPIs E ESTOQUE ---
+
+class EPIForm(forms.ModelForm):
     class Meta:
-        model = Localizacao
-        fields = ['nome']
-# -------------------------------------------------------------
+        model = EPI
+        fields = [
+            'categoria', 'marca', 'modelo', 'tamanho', 
+            'ca', 'data_validade', 'local',
+            'quantidade', 'quantidade_minima'
+        ]
+        widgets = {
+            'data_validade': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'ca': forms.TextInput(attrs={'class': 'form-control'}),
+            'modelo': forms.TextInput(attrs={'class': 'form-control'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'quantidade_minima': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'categoria': forms.Select(attrs={'class': 'form-select'}),
+            'marca': forms.Select(attrs={'class': 'form-select'}),
+            'tamanho': forms.Select(attrs={'class': 'form-select'}),
+            'local': forms.Select(attrs={'class': 'form-select'}),
+        }
 
-# -- Novos Forms do Estoque Avançado --
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['categoria'].queryset = CategoriaEPI.objects.filter(empresa_id=empresa_id)
+            self.fields['marca'].queryset = MarcaEPI.objects.filter(empresa_id=empresa_id)
+            self.fields['tamanho'].queryset = TamanhoEPI.objects.filter(empresa_id=empresa_id)
+            self.fields['local'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+
+class EntregaEPIForm(forms.ModelForm):
+    class Meta:
+        model = EntregaEPI
+        fields = ['epi', 'quantidade', 'data_entrega', 'termo_assinado']
+        widgets = {
+            'data_entrega': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'epi': forms.Select(attrs={'class': 'form-select'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'termo_assinado': forms.FileInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['epi'].queryset = EPI.objects.filter(empresa_id=empresa_id, quantidade__gt=0, ativo=True)
+
+# --- FORMS RÁPIDOS ---
+
 class CategoriaEPIForm(forms.ModelForm):
     class Meta:
         model = CategoriaEPI
@@ -137,168 +174,48 @@ class TamanhoEPIForm(forms.ModelForm):
         model = TamanhoEPI
         fields = ['tamanho']
 
-class EPIForm(forms.ModelForm):
+class TipoEspecialidadeForm(forms.ModelForm):
     class Meta:
-        model = EPI
-        fields = [
-            'categoria', 'marca', 'modelo', 'tamanho', 
-            'ca', 'quantidade_minima', 'data_validade', 'local'
-        ]
-        widgets = {
-            'data_validade': forms.DateInput(attrs={'type': 'date'}),
-            'ca': forms.NumberInput(attrs={'min': 0}),
-            'quantidade_minima': forms.NumberInput(attrs={'min': 0}),
-        }
+        model = TipoEspecialidade
+        fields = ['nome']
+# --- PRONTUÁRIO ---
 
-    def __init__(self, empresa_id, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if empresa_id:
-            self.fields['categoria'].queryset = CategoriaEPI.objects.filter(empresa_id=empresa_id)
-            self.fields['marca'].queryset = MarcaEPI.objects.filter(empresa_id=empresa_id)
-            self.fields['tamanho'].queryset = TamanhoEPI.objects.filter(empresa_id=empresa_id)
-            self.fields['local'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
-
-    def __init__(self, empresa_id, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if empresa_id:
-            self.fields['categoria'].queryset = CategoriaEPI.objects.filter(empresa_id=empresa_id)
-            self.fields['marca'].queryset = MarcaEPI.objects.filter(empresa_id=empresa_id)
-            self.fields['tamanho'].queryset = TamanhoEPI.objects.filter(empresa_id=empresa_id)
-            self.fields['local'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
-
-class EstoqueEntradaForm(forms.ModelForm):
-    class Meta:
-        model = MovimentacaoEstoque
-        fields = ['quantidade', 'data_movimento', 'observacao']
-        widgets = {
-            'data_movimento': forms.DateInput(attrs={'type': 'date'}),
-            'observacao': forms.TextInput(attrs={'placeholder': 'Ex: Compra Nota Fiscal 123'}),
-            'quantidade': forms.NumberInput(attrs={'min': 1}),
-        }
-
-# 5. ADVERTÊNCIAS
-class TipoAdvertenciaForm(forms.ModelForm):
-    class Meta:
-        model = TipoAdvertencia
-        fields = ['titulo', 'descricao_padrao']
-        widgets = {'descricao_padrao': forms.Textarea(attrs={'rows': 4})}
-
-class AdvertenciaForm(forms.ModelForm):
-    class Meta:
-        model = Advertencia
-        fields = ['funcionario', 'tipo', 'data_incidente', 'detalhes']
-        widgets = {
-            'data_incidente': forms.DateInput(attrs={'type': 'date'}),
-            'detalhes': forms.Textarea(attrs={'rows': 3}),
-        }
-
-    def __init__(self, empresa_id, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if empresa_id:
-            self.fields['funcionario'].queryset = Funcionario.objects.filter(empresa_id=empresa_id, ativo=True)
-            self.fields['tipo'].queryset = TipoAdvertencia.objects.filter(empresa_id=empresa_id)
-
-class AdvertenciaFuncionarioForm(forms.ModelForm):
-    class Meta:
-        model = Advertencia
-        exclude = ['empresa', 'funcionario', 'reincidente', 'criado_em']
-        widgets = {
-            'data_incidente': forms.DateInput(attrs={'type': 'date'}),
-            'detalhes': forms.Textarea(attrs={'rows': 3}),
-        }
-
-    def __init__(self, empresa_id, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if empresa_id:
-            self.fields['tipo'].queryset = TipoAdvertencia.objects.filter(empresa_id=empresa_id)
-
-# 6. EXTINTORES
-class ExtintorForm(forms.ModelForm):
-    class Meta:
-        model = Extintor
-        exclude = ['empresa']
-        widgets = {
-            'data_ultima_manutencao': forms.DateInput(attrs={'type': 'date'}),
-            'data_proxima_manutencao': forms.DateInput(attrs={'type': 'date'}),
-            'data_teste_hidrostatico': forms.DateInput(attrs={'type': 'date'}),
-        }
-    
-    def __init__(self, empresa_id, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if empresa_id:
-            self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
-
-class InspecaoExtintorForm(forms.ModelForm):
-    fotos = MultipleFileField(
-        widget=MultipleFileInput(attrs={'multiple': True}), label="Evidências Fotográficas", required=False
-    )
-    class Meta:
-        model = InspecaoExtintor
-        fields = ['data_inspecao', 'responsavel', 'lacre_intacto', 'manometro_pressao_ok', 'sinalizacao_visivel', 'acesso_livre', 'mangueira_integra', 'observacoes', 'fotos']
-        widgets = {'data_inspecao': forms.DateInput(attrs={'type': 'date'}), 'observacoes': forms.Textarea(attrs={'rows': 2})}
-
-# 7. OUTROS EQUIPAMENTOS
-class EquipamentoForm(forms.ModelForm):
-    class Meta:
-        model = Equipamento
-        fields = ['tipo', 'nome', 'localizacao', 'data_instalacao', 'data_validade', 'especificacao', 'imagem']
-        widgets = {'data_instalacao': forms.DateInput(attrs={'type': 'date'}), 'data_validade': forms.DateInput(attrs={'type': 'date'})}
-
-    def __init__(self, empresa_id, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if empresa_id:
-            self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
-
-class InspecaoEquipamentoForm(forms.ModelForm):
-    arquivos = MultipleFileField(
-        widget=MultipleFileInput(attrs={'multiple': True}), label="Evidências", required=False
-    )
-    class Meta:
-        model = InspecaoEquipamento
-        fields = ['data_inspecao', 'responsavel', 'item_integro', 'acesso_livre', 'sinalizacao_ok', 'teste_funcional', 'observacoes', 'arquivos']
-        widgets = {'data_inspecao': forms.DateInput(attrs={'type': 'date'}), 'observacoes': forms.Textarea(attrs={'rows': 2})}
-
-# 8. PRONTUÁRIO (VACINAS, EPIs, TREINAMENTOS)
 class ControleVacinaForm(forms.ModelForm):
     class Meta:
         model = ControleVacina
         fields = ['vacina', 'data_aplicacao', 'comprovante']
-        widgets = {'data_aplicacao': forms.DateInput(attrs={'type': 'date'})}
-    
+        widgets = {
+            'data_aplicacao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'vacina': forms.Select(attrs={'class': 'form-select'}),
+            'comprovante': forms.FileInput(attrs={'class': 'form-control'}),
+        }
+
     def __init__(self, empresa_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if empresa_id:
             self.fields['vacina'].queryset = Vacina.objects.filter(empresa_id=empresa_id)
-
-class EntregaEPIForm(forms.ModelForm):
-    class Meta:
-        model = EntregaEPI
-        fields = ['epi', 'data_entrega', 'quantidade', 'termo_assinado']
-        widgets = {'data_entrega': forms.DateInput(attrs={'type': 'date'})}
-
-    def __init__(self, empresa_id, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if empresa_id:
-            self.fields['epi'].queryset = EPI.objects.filter(empresa_id=empresa_id, quantidade__gt=0)
 
 class TreinamentoFuncionarioForm(forms.ModelForm):
     class Meta:
         model = TreinamentoFuncionario
         fields = ['nome_treinamento', 'data_realizacao', 'data_validade', 'certificado']
         widgets = {
-            'data_realizacao': forms.DateInput(attrs={'type': 'date'}),
-            'data_validade': forms.DateInput(attrs={'type': 'date'}),
+            'data_realizacao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_validade': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'nome_treinamento': forms.TextInput(attrs={'class': 'form-control'}),
+            'certificado': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
-# 9. NOVOS FORMS (AFASTAMENTO E ACIDENTE)
 class AfastamentoForm(forms.ModelForm):
     class Meta:
         model = Afastamento
-        fields = ['data_inicio', 'data_retorno', 'motivo', 'laudo']
+        # Corrigido: usa os nomes 'motivo' e 'laudo' do model
+        fields = ['motivo', 'data_inicio', 'data_retorno', 'laudo'] 
         widgets = {
-            'data_inicio': forms.DateInput(attrs={'type': 'date'}),
-            'data_retorno': forms.DateInput(attrs={'type': 'date'}),
-            'motivo': forms.Textarea(attrs={'rows': 3}),
+            'data_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_retorno': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'motivo': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'laudo': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
 class AcidenteTrabalhoForm(forms.ModelForm):
@@ -306,19 +223,70 @@ class AcidenteTrabalhoForm(forms.ModelForm):
         model = AcidenteTrabalho
         fields = ['data_acidente', 'hora_acidente', 'local', 'descricao_motivo', 'arquivo_evidencia']
         widgets = {
-            'data_acidente': forms.DateInput(attrs={'type': 'date'}),
-            'hora_acidente': forms.TimeInput(attrs={'type': 'time'}),
-            'descricao_motivo': forms.Textarea(attrs={'rows': 3}),
+            'data_acidente': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'hora_acidente': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'local': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao_motivo': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'arquivo_evidencia': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
-class ProdutoQuimicoForm(forms.ModelForm):
+class AdvertenciaFuncionarioForm(forms.ModelForm):
     class Meta:
-        model = ProdutoQuimico
-        exclude = ['empresa', 'criado_em']
+        model = Advertencia
+        # Corrigido: usa 'detalhes' do model
+        fields = ['tipo', 'data_incidente', 'detalhes']
         widgets = {
-            'data_fabricacao': forms.DateInput(attrs={'type': 'date'}),
-            'data_validade': forms.DateInput(attrs={'type': 'date'}),
-            'riscos': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Descreva os riscos conforme rótulo ou FISPQ...'}),
+            'data_incidente': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'detalhes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['tipo'].queryset = TipoAdvertencia.objects.filter(empresa_id=empresa_id)
+
+class AdvertenciaForm(forms.ModelForm):
+    class Meta:
+        model = Advertencia
+        fields = ['funcionario', 'tipo', 'data_incidente', 'detalhes']
+        widgets = {
+            'data_incidente': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'funcionario': forms.Select(attrs={'class': 'form-select'}),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'detalhes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['funcionario'].queryset = Funcionario.objects.filter(empresa_id=empresa_id)
+            self.fields['tipo'].queryset = TipoAdvertencia.objects.filter(empresa_id=empresa_id)
+
+# --- EXTINTORES E EQUIPAMENTOS ---
+
+class ExtintorForm(forms.ModelForm):
+    class Meta:
+        model = Extintor
+        # Corrigido: usa 'codigo_patrimonial', 'data_teste_hidrostatico' etc
+        fields = [
+            'codigo_patrimonial', 'numero_serie', 'classe', 'agente', 'capacidade', 
+            'localizacao', 'classe_risco', 'altura_instalacao',
+            'data_teste_hidrostatico', 'data_proxima_manutencao', 'data_ultima_manutencao'
+        ]
+        widgets = {
+            'data_teste_hidrostatico': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_proxima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_ultima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            
+            'codigo_patrimonial': forms.TextInput(attrs={'class': 'form-control'}),
+            'numero_serie': forms.TextInput(attrs={'class': 'form-control'}),
+            'classe_risco': forms.TextInput(attrs={'class': 'form-control'}),
+            'altura_instalacao': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'classe': forms.Select(attrs={'class': 'form-select'}),
+            'agente': forms.Select(attrs={'class': 'form-select'}),
+            'capacidade': forms.TextInput(attrs={'class': 'form-control'}),
+            'localizacao': forms.Select(attrs={'class': 'form-select'}),
         }
 
     def __init__(self, empresa_id, *args, **kwargs):
@@ -326,10 +294,70 @@ class ProdutoQuimicoForm(forms.ModelForm):
         if empresa_id:
             self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
 
-class TipoEspecialidadeForm(forms.ModelForm):
+class InspecaoExtintorForm(forms.ModelForm):
     class Meta:
-        model = TipoEspecialidade
-        fields = ['nome']
+        model = InspecaoExtintor
+        # Corrigido: removemos 'foto', 'pintura' e 'sinalizacao' que não existem no model
+        fields = ['data_inspecao', 'responsavel', 'lacre_intacto', 'manometro_pressao_ok', 'mangueira_integra', 'observacoes']
+        widgets = {
+            'data_inspecao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'observacoes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'responsavel': forms.TextInput(attrs={'class': 'form-control'}),
+            'lacre_intacto': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'manometro_pressao_ok': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'mangueira_integra': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+class EquipamentoForm(forms.ModelForm):
+    class Meta:
+        model = Equipamento
+        fields = ['nome', 'tipo', 'localizacao', 'data_validade', 'qrcode_data']
+        widgets = {
+            'data_validade': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'localizacao': forms.Select(attrs={'class': 'form-select'}),
+            'qrcode_data': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+    
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+
+class InspecaoEquipamentoForm(forms.ModelForm):
+    class Meta:
+        model = InspecaoEquipamento
+        # Corrigido: removemos 'foto' (tabela separada)
+        fields = ['data_inspecao', 'responsavel', 'status', 'observacoes']
+        widgets = {
+            'data_inspecao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'observacoes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'responsavel': forms.TextInput(attrs={'class': 'form-control'}),
+            'status': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+# --- PRODUTOS QUÍMICOS ---
+
+class ProdutoQuimicoForm(forms.ModelForm):
+    class Meta:
+        model = ProdutoQuimico
+        fields = ['nome', 'fabricante', 'classificacao', 'data_validade', 'fispq', 'localizacao']
+        widgets = {
+            'data_validade': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'fabricante': forms.TextInput(attrs={'class': 'form-control'}),
+            'classificacao': forms.TextInput(attrs={'class': 'form-control'}),
+            'localizacao': forms.Select(attrs={'class': 'form-select'}),
+            'fispq': forms.FileInput(attrs={'class': 'form-control'}),
+        }
+    
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+
+# --- HOSPITAIS ---
 
 class HospitalForm(forms.ModelForm):
     especialidades = forms.ModelMultipleChoiceField(
@@ -337,41 +365,59 @@ class HospitalForm(forms.ModelForm):
         widget=forms.CheckboxSelectMultiple,
         required=False
     )
+
     class Meta:
         model = Hospital
-        exclude = ['empresa', 'criado_em']
-        widgets = {'endereco': forms.Textarea(attrs={'rows': 2})}
+        fields = ['nome', 'telefone', 'endereco', 'horario_atendimento', 'mapa_link']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'telefone': forms.TextInput(attrs={'class': 'form-control'}),
+            'endereco': forms.TextInput(attrs={'class': 'form-control'}),
+            'horario_atendimento': forms.TextInput(attrs={'class': 'form-control'}),
+            'mapa_link': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
     def __init__(self, empresa_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if empresa_id:
             self.fields['especialidades'].queryset = TipoEspecialidade.objects.filter(empresa_id=empresa_id)
+        
+        if self.instance.pk:
+            self.fields['especialidades'].initial = self.instance.especialidades.all()
 
-def api_criar_categoria_epi(request):
-    if request.method == "POST":
-        form = CategoriaEPIForm(request.POST)
-        if form.is_valid():
-            cat = form.save(commit=False)
-            cat.empresa = request.user.perfil.empresa
-            cat.save()
-            return JsonResponse({'success': True, 'id': cat.id, 'nome': cat.nome})
-    return JsonResponse({'success': False, 'error': 'Erro ao salvar'})
+    def save_m2m(self):
+        self.instance.especialidades.set(self.cleaned_data['especialidades'])
 
-def api_criar_marca_epi(request):
-    if request.method == "POST":
-        form = MarcaEPIForm(request.POST)
-        if form.is_valid():
-            marca = form.save(commit=False)
-            marca.empresa = request.user.perfil.empresa
-            marca.save()
-            return JsonResponse({'success': True, 'id': marca.id, 'nome': marca.nome})
-    return JsonResponse({'success': False, 'error': 'Erro ao salvar'})
+# --- CONFIGURAÇÕES GERAIS ---
 
-def api_criar_tamanho_epi(request):
-    if request.method == "POST":
-        form = TamanhoEPIForm(request.POST)
-        if form.is_valid():
-            tam = form.save(commit=False)
-            tam.empresa = request.user.perfil.empresa
-            tam.save()
-            return JsonResponse({'success': True, 'id': tam.id, 'nome': tam.tamanho})
-    return JsonResponse({'success': False, 'error': 'Erro ao salvar'})
+class LocalizacaoForm(forms.ModelForm):
+    class Meta:
+        model = Localizacao
+        fields = ['nome']
+        widgets = {'nome': forms.TextInput(attrs={'class': 'form-control'})}
+
+class TipoEPIForm(forms.ModelForm):
+    class Meta:
+        model = TipoEPI
+        fields = ['nome']
+        widgets = {'nome': forms.TextInput(attrs={'class': 'form-control'})}
+
+class VacinaForm(forms.ModelForm):
+    class Meta:
+        model = Vacina
+        # CORRIGIDO: mudado de 'validade_meses' para 'meses_reforco'
+        fields = ['nome', 'descricao', 'meses_reforco']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'meses_reforco': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+class TipoAdvertenciaForm(forms.ModelForm):
+    class Meta:
+        model = TipoAdvertencia
+        fields = ['titulo', 'descricao_padrao']
+        widgets = {
+            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao_padrao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }

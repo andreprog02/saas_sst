@@ -10,7 +10,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.core.files.base import ContentFile
-from django.db.models import Count, Q
+from django.db.models import Count, Q, ProtectedError
 from django.db.models.functions import TruncMonth
 
 # --- IMPORTAÇÃO DOS MODELOS ---
@@ -85,15 +85,15 @@ def novo_funcionario(request):
     return render(request, 'funcionario_form.html', {'form': form})
 
 @login_required
-def editar_funcionario(request, pk):
+def editar_funcionario(request, id):
     empresa = request.user.perfil.empresa
-    funcionario = get_object_or_404(Funcionario, pk=pk, empresa=empresa)
+    funcionario = get_object_or_404(Funcionario, pk=id, empresa=empresa)
     
     if request.method == 'POST':
         form = FuncionarioForm(empresa.id, request.POST, instance=funcionario)
         if form.is_valid():
             form.save()
-            return redirect('detalhe_funcionario', pk=funcionario.id)
+            return redirect('detalhe_funcionario', id=funcionario.id)
     else:
         form = FuncionarioForm(empresa.id, instance=funcionario)
     
@@ -102,10 +102,11 @@ def editar_funcionario(request, pk):
 # --- PRONTUÁRIO COMPLETO ---
 
 @login_required
-def detalhe_funcionario(request, pk):
+def detalhe_funcionario(request, id):
     empresa = request.user.perfil.empresa
-    funcionario = get_object_or_404(Funcionario, pk=pk, empresa=empresa)
+    funcionario = get_object_or_404(Funcionario, pk=id, empresa=empresa)
     
+    # Listagens
     vacinas = funcionario.vacinas.all().order_by('data_proximo_reforco')
     epis = funcionario.epis_entregues.all().order_by('-data_entrega')
     treinamentos = funcionario.treinamentos.all().order_by('-data_realizacao')
@@ -113,26 +114,124 @@ def detalhe_funcionario(request, pk):
     afastamentos = funcionario.afastamentos.all().order_by('-data_inicio')
     acidentes = funcionario.acidentes.all().order_by('-data_acidente')
     
-    return render(request, 'funcionario_detalhe.html', {
+    # Formulários para os Modais
+    context = {
         'funcionario': funcionario,
         'vacinas': vacinas,
         'epis': epis,
         'treinamentos': treinamentos,
         'advertencias': advertencias,
         'afastamentos': afastamentos,
-        'acidentes': acidentes
-    })
+        'acidentes': acidentes,
+        
+        # Forms Vazios
+        'form_vacina': ControleVacinaForm(empresa.id),
+        'form_epi': EntregaEPIForm(empresa.id),
+        'form_treinamento': TreinamentoFuncionarioForm(),
+        'form_advertencia': AdvertenciaFuncionarioForm(empresa.id),
+        'form_afastamento': AfastamentoForm(),
+        'form_acidente': AcidenteTrabalhoForm(),
+    }
+    return render(request, 'funcionario_detalhe.html', context)
 
-# --- AÇÕES DO PRONTUÁRIO ---
-# (Mantive as funções auxiliares usadas no detalhe do funcionário se existirem urls para elas, 
-# mas como não apareceram no urls.py principal, mantenho aqui caso precise)
+# --- AÇÕES DO PRONTUÁRIO (VIEWS DE REGISTRO) ---
+
+@login_required
+def registrar_vacina(request, func_id):
+    empresa = request.user.perfil.empresa
+    funcionario = get_object_or_404(Funcionario, pk=func_id, empresa=empresa)
+    if request.method == 'POST':
+        form = ControleVacinaForm(empresa.id, request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.funcionario = funcionario
+            obj.save()
+    return redirect('detalhe_funcionario', id=func_id)
+
+@login_required
+def registrar_entrega_epi(request, func_id):
+    empresa = request.user.perfil.empresa
+    funcionario = get_object_or_404(Funcionario, pk=func_id, empresa=empresa)
+    if request.method == 'POST':
+        form = EntregaEPIForm(empresa.id, request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.funcionario = funcionario
+            obj.save()
+    return redirect('detalhe_funcionario', id=func_id)
+
+@login_required
+def registrar_treinamento(request, func_id):
+    empresa = request.user.perfil.empresa
+    funcionario = get_object_or_404(Funcionario, pk=func_id, empresa=empresa)
+    if request.method == 'POST':
+        form = TreinamentoFuncionarioForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.funcionario = funcionario
+            obj.save()
+    return redirect('detalhe_funcionario', id=func_id)
+
+@login_required
+def registrar_afastamento(request, func_id):
+    empresa = request.user.perfil.empresa
+    funcionario = get_object_or_404(Funcionario, pk=func_id, empresa=empresa)
+    if request.method == 'POST':
+        form = AfastamentoForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.funcionario = funcionario
+            obj.save()
+            funcionario.situacao = 'AFASTADO'
+            funcionario.save()
+    return redirect('detalhe_funcionario', id=func_id)
+
+@login_required
+def registrar_acidente(request, func_id):
+    empresa = request.user.perfil.empresa
+    funcionario = get_object_or_404(Funcionario, pk=func_id, empresa=empresa)
+    if request.method == 'POST':
+        form = AcidenteTrabalhoForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.funcionario = funcionario
+            obj.save()
+    return redirect('detalhe_funcionario', id=func_id)
+
+@login_required
+def registrar_advertencia_modal(request, func_id):
+    empresa = request.user.perfil.empresa
+    funcionario = get_object_or_404(Funcionario, pk=func_id, empresa=empresa)
+    if request.method == 'POST':
+        form = AdvertenciaFuncionarioForm(empresa.id, request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.funcionario = funcionario
+            obj.empresa = empresa
+            obj.save()
+    return redirect('detalhe_funcionario', id=func_id)
 
 # --- SETORES E ESTOQUE DE EPI ---
 
 @login_required
+def criar_setor(request):
+    empresa = request.user.perfil.empresa
+    if request.method == 'POST':
+        form = SetorForm(empresa, request.POST)
+        if form.is_valid():
+            setor = form.save(commit=False)
+            setor.empresa = empresa
+            setor.save()
+            form.save_m2m()
+            return redirect('dashboard')
+    else:
+        form = SetorForm(empresa)
+    return render(request, 'setor_form.html', {'form': form})
+
+@login_required
 def lista_epis(request):
     empresa = request.user.perfil.empresa
-    epis = EPI.objects.filter(empresa=empresa)
+    epis = EPI.objects.filter(empresa=empresa, ativo=True) 
     return render(request, 'epis_lista.html', {'epis': epis})
 
 @login_required
@@ -161,9 +260,15 @@ def criar_editar_epi_logica(request, pk):
 def deletar_epi(request, id):
     empresa = request.user.perfil.empresa
     epi = get_object_or_404(EPI, pk=id, empresa=empresa)
+    
     if request.method == 'POST':
-        epi.delete()
+        try:
+            epi.delete()
+        except ProtectedError:
+            epi.ativo = False
+            epi.save()
         return redirect('lista_epis')
+        
     return render(request, 'confirmar_delete.html', {'objeto': epi})
 
 @login_required
@@ -187,8 +292,6 @@ def entrada_estoque_epi(request, id):
 
 @login_required
 def config_tipos_epi(request):
-    # Essa view gerenciava "TipoEPI", mas agora temos Categorias. 
-    # Mantido para compatibilidade se ainda usar TipoEPI no Setor.
     empresa = request.user.perfil.empresa
     tipos = TipoEPI.objects.filter(empresa=empresa)
     form = TipoEPIForm(request.POST or None)
@@ -219,7 +322,7 @@ def config_locais(request):
             return redirect('config_locais')
     return render(request, 'config_locais.html', {'locais': locais, 'form': form})
 
-# --- API VIEWS PARA CADASTRO RÁPIDO VIA MODAL (CATEGORIA, MARCA, TAMANHO) ---
+# --- API VIEWS PARA CADASTRO RÁPIDO VIA MODAL ---
 
 @login_required
 def api_criar_categoria_epi(request):
@@ -260,6 +363,20 @@ def api_criar_tamanho_epi(request):
             return JsonResponse({'success': False, 'error': form.errors.as_json()})
     return JsonResponse({'success': False, 'error': 'Método inválido'})
 
+@login_required
+def api_criar_especialidade(request):
+    if request.method == "POST":
+        from .forms import TipoEspecialidadeForm 
+        form = TipoEspecialidadeForm(request.POST)
+        if form.is_valid():
+            esp = form.save(commit=False)
+            esp.empresa = request.user.perfil.empresa
+            esp.save()
+            return JsonResponse({'success': True, 'id': esp.id, 'nome': esp.nome})
+        else:
+            return JsonResponse({'success': False, 'error': form.errors.as_json()})
+    return JsonResponse({'success': False, 'error': 'Método inválido'})
+
 # --- ADVERTÊNCIAS ---
 
 @login_required
@@ -272,7 +389,7 @@ def gerenciar_tipos_advertencia(request):
             obj = form.save(commit=False)
             obj.empresa = empresa
             obj.save()
-            return redirect('gerenciar_tipos_advertencia') # Corrigido redirect
+            return redirect('gerenciar_tipos_advertencia')
     else:
         form = TipoAdvertenciaForm()
     return render(request, 'advertencias/gerenciar_tipos.html', {'tipos': tipos, 'form': form})
@@ -295,7 +412,6 @@ def nova_advertencia(request):
 def dashboard_advertencias(request):
     empresa = request.user.perfil.empresa
     advertencias = Advertencia.objects.filter(empresa=empresa).order_by('-data_incidente')
-    # ... lógicas de gráficos mantidas ...
     return render(request, 'advertencias/dashboard_adv.html', {'advertencias': advertencias})
 
 @login_required
@@ -307,10 +423,9 @@ def documento_advertencia(request, adv_id):
 # --- EXTINTORES ---
 
 @login_required
-def lista_extintores(request): # Renomeado de dashboard_extintores
+def lista_extintores(request):
     empresa = request.user.perfil.empresa
     extintores = Extintor.objects.filter(empresa=empresa)
-    # ... filtros mantidos ...
     return render(request, 'extintores/dashboard.html', {'extintores': extintores})
 
 @login_required
@@ -336,7 +451,7 @@ def criar_editar_extintor_logica(request, pk):
     return render(request, 'extintores/form.html', {'form': form})
 
 @login_required
-def inspecao_extintor(request, id): # Renomeado de registrar_inspecao
+def inspecao_extintor(request, id):
     empresa = request.user.perfil.empresa
     extintor = get_object_or_404(Extintor, pk=id, empresa=empresa)
     if request.method == 'POST':
@@ -345,7 +460,6 @@ def inspecao_extintor(request, id): # Renomeado de registrar_inspecao
             inspecao = form.save(commit=False)
             inspecao.extintor = extintor
             inspecao.save()
-            # Fotos...
             return redirect('lista_extintores')
     else:
         form = InspecaoExtintorForm(initial={'responsavel': request.user.username})
@@ -359,8 +473,7 @@ def historico_extintor(request, id):
     return render(request, 'extintores/historico.html', {'extintor': extintor, 'inspecoes': inspecoes})
 
 @login_required
-def mobile_scan(request, pk=None): # Renomeado de extintor_mobile
-    # Lógica de scan (se tiver pk, mostra detalhes)
+def mobile_scan(request, pk=None):
     empresa = request.user.perfil.empresa
     extintor = None
     if pk:
@@ -370,7 +483,7 @@ def mobile_scan(request, pk=None): # Renomeado de extintor_mobile
 # --- EQUIPAMENTOS ---
 
 @login_required
-def lista_equipamentos(request): # Renomeado de dashboard_equipamentos
+def lista_equipamentos(request):
     empresa = request.user.perfil.empresa
     equipamentos = Equipamento.objects.filter(empresa=empresa)
     return render(request, 'equipamentos/dashboard.html', {'equipamentos': equipamentos})
@@ -398,7 +511,7 @@ def criar_editar_equipamento_logica(request, pk):
     return render(request, 'equipamentos/form.html', {'form': form})
 
 @login_required
-def inspecao_equipamento(request, id): # Renomeado
+def inspecao_equipamento(request, id):
     empresa = request.user.perfil.empresa
     equipamento = get_object_or_404(Equipamento, pk=id, empresa=empresa)
     if request.method == 'POST':
@@ -443,7 +556,6 @@ def gerenciar_vacinas(request):
 def dashboard_quimicos(request):
     empresa = request.user.perfil.empresa
     produtos = ProdutoQuimico.objects.filter(empresa=empresa)
-    # ... lógica de validade ...
     return render(request, 'quimicos/dashboard.html', {'produtos': produtos})
 
 @login_required
@@ -468,6 +580,15 @@ def criar_editar_quimico_logica(request, pk):
         form = ProdutoQuimicoForm(empresa.id, instance=produto)
     return render(request, 'generic_form.html', {'form': form, 'titulo': 'Produto Químico'})
 
+@login_required
+def deletar_quimico(request, pk):
+    empresa = request.user.perfil.empresa
+    produto = get_object_or_404(ProdutoQuimico, pk=pk, empresa=empresa)
+    if request.method == 'POST':
+        produto.delete()
+        return redirect('dashboard_quimicos')
+    return render(request, 'confirmar_delete.html', {'objeto': produto})
+
 # --- HOSPITAIS ---
 
 @login_required
@@ -478,7 +599,6 @@ def dashboard_hospitais(request):
 
 @login_required
 def novo_hospital(request):
-    # Lógica de criação de hospital
     empresa = request.user.perfil.empresa
     if request.method == 'POST':
         form = HospitalForm(empresa.id, request.POST)
@@ -493,12 +613,11 @@ def novo_hospital(request):
     return render(request, 'hospitais/form.html', {'form': form})
 
 @login_required
-def config_hospitais(request): # Renomeado de gerenciar_especialidades
+def config_hospitais(request):
     empresa = request.user.perfil.empresa
     tipos = TipoEspecialidade.objects.filter(empresa=empresa)
     form = TipoEspecialidadeForm(request.POST or None)
     if request.method == 'POST':
-        # ... lógica de salvar/deletar especialidade ...
         if form.is_valid():
             obj = form.save(commit=False)
             obj.empresa = empresa

@@ -28,14 +28,32 @@ class PerfilUsuario(models.Model):
     def __str__(self): return f"{self.usuario.username} - {self.empresa.nome_fantasia}"
 
 # ==============================================================================
-# 2. CADASTROS BÁSICOS (NORMAS, VACINAS)
+# 2. CADASTROS BÁSICOS (NORMAS, RISCOS, VACINAS)
 # ==============================================================================
+
+# MOVIDO PARA CIMA (Correção de Erro de Referência)
 class NormaRegulamentadora(models.Model):
     codigo = models.CharField(max_length=10, unique=True)
     titulo = models.CharField(max_length=255)
     descricao = models.TextField(blank=True, null=True)
 
     def __str__(self): return f"{self.codigo} - {self.titulo}"
+
+# MOVIDO PARA CIMA (Correção de Erro de Referência)
+class RiscoOcupacional(models.Model):
+    TIPO_RISCO = [
+        ('FISICO', 'Físico'),
+        ('QUIMICO', 'Químico'),
+        ('BIOLOGICO', 'Biológico'),
+        ('ERGONOMICO', 'Ergonômico'),
+        ('ACIDENTE', 'Acidente/Mecânico'),
+    ]
+    tipo = models.CharField(max_length=20, choices=TIPO_RISCO)
+    nome = models.CharField(max_length=100) # Ex: Ruído, Calor, Poeira
+    descricao = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.nome}"
 
 class Vacina(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
@@ -49,7 +67,6 @@ class Vacina(models.Model):
 # 3. SETOR E FUNCIONÁRIO
 # ==============================================================================
 
-# Mantemos TipoEPI aqui para compatibilidade com o modelo Setor (que usa epis_obrigatorios)
 class TipoEPI(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     nome = models.CharField(max_length=100, verbose_name="Nome do Tipo")
@@ -58,14 +75,15 @@ class TipoEPI(models.Model):
 class Setor(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     nome = models.CharField(max_length=100)
+    descricao = models.TextField(null=True, blank=True)
+    responsavel = models.CharField(max_length=100, null=True, blank=True)
     
-    nrs_obrigatorias = models.ManyToManyField(NormaRegulamentadora, blank=True, verbose_name="NRs Aplicáveis")
-    vacinas_padrao = models.ManyToManyField(Vacina, blank=True, verbose_name="Vacinas Obrigatórias")
-    epis_obrigatorios = models.ManyToManyField(TipoEPI, blank=True, verbose_name="EPIs Obrigatórios por Tipo")
-    
-    treinamentos = models.TextField(verbose_name="Treinamentos", blank=True)
+    # Agora funciona porque as classes estão definidas acima
+    normas = models.ManyToManyField(NormaRegulamentadora, blank=True)
+    riscos = models.ManyToManyField(RiscoOcupacional, blank=True)
 
-    def __str__(self): return self.nome
+    def __str__(self):
+        return self.nome
 
 class Funcionario(models.Model):
     SITUACAO_CHOICES = [
@@ -78,28 +96,40 @@ class Funcionario(models.Model):
     ]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    nome = models.CharField(max_length=255)
+    nome = models.CharField(max_length=100)
     cpf = models.CharField(max_length=14)
+    
+    # Contato e Documentos
+    rg = models.CharField(max_length=20, null=True, blank=True, verbose_name="RG")
+    matricula = models.CharField(max_length=20, null=True, blank=True, verbose_name="Matrícula")
+    telefone = models.CharField(max_length=20, null=True, blank=True)
+    email = models.EmailField(null=True, blank=True)
+    
+    data_nascimento = models.DateField(null=True, blank=True)
     cargo = models.CharField(max_length=100)
-    setor = models.ForeignKey(Setor, on_delete=models.PROTECT, null=True, blank=True, verbose_name="Setor de Trabalho")
-    data_admissao = models.DateField(verbose_name="Data de Admissão")
+    setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True)
+    data_admissao = models.DateField()
+    foto = models.ImageField(upload_to='funcionarios/', null=True, blank=True)
     
-    situacao = models.CharField(max_length=20, choices=SITUACAO_CHOICES, default='ATIVO', verbose_name="Situação Atual")
-    motivo_afastamento = models.TextField(blank=True, verbose_name="Detalhes do Afastamento/Desligamento")
-    ativo = models.BooleanField(default=True, verbose_name="Cadastro Ativo no Sistema?")
+    # Status
+    situacao = models.CharField(max_length=20, choices=SITUACAO_CHOICES, default='ATIVO')
+    motivo_afastamento = models.CharField(max_length=255, null=True, blank=True)
+    ativo = models.BooleanField(default=True)
 
-    def __str__(self): return f"{self.nome} - {self.cargo}"
-    
+    def __str__(self): return self.nome
+        
     @property
     def cor_status(self):
-        mapping = {
-            'ATIVO': 'success', 'FERIAS': 'info', 'AFASTADO': 'warning',
-            'LICENCA': 'primary', 'SUSPENSO': 'dark', 'DESLIGADO': 'danger'
-        }
-        return mapping.get(self.situacao, 'secondary')
+        if self.situacao == 'ATIVO': return 'success'
+        if self.situacao == 'FERIAS': return 'info'
+        if self.situacao == 'AFASTADO': return 'warning'
+        if self.situacao == 'LICENCA': return 'primary'
+        if self.situacao == 'SUSPENSO': return 'danger'
+        if self.situacao == 'DESLIGADO': return 'dark'
+        return 'secondary'
 
 # ==============================================================================
-# 4. ESTOQUE DE EPIs (REFATORADO COM RASTREABILIDADE)
+# 4. ESTOQUE DE EPIs
 # ==============================================================================
 
 class Localizacao(models.Model):
@@ -107,10 +137,9 @@ class Localizacao(models.Model):
     nome = models.CharField(max_length=100, verbose_name="Nome do Local")
     def __str__(self): return self.nome
 
-# Tabelas Auxiliares para Combobox
 class CategoriaEPI(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    nome = models.CharField(max_length=100, verbose_name="Categoria", help_text="Ex: Capacete, Luva, Bota")
+    nome = models.CharField(max_length=100, verbose_name="Categoria")
     def __str__(self): return self.nome
 
 class MarcaEPI(models.Model):
@@ -120,28 +149,21 @@ class MarcaEPI(models.Model):
 
 class TamanhoEPI(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    tamanho = models.CharField(max_length=20, verbose_name="Tamanho", help_text="Ex: P, M, G, 40, 42")
+    tamanho = models.CharField(max_length=20, verbose_name="Tamanho")
     def __str__(self): return self.tamanho
 
-# Modelo Principal do EPI
 class EPI(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    categoria = models.ForeignKey(CategoriaEPI, on_delete=models.PROTECT, null=True, blank=True)
+    marca = models.ForeignKey(MarcaEPI, on_delete=models.PROTECT, null=True, blank=True)
+    tamanho = models.ForeignKey(TamanhoEPI, on_delete=models.PROTECT, null=True, blank=True)
     
-    # Comboboxes (Novos)
-    categoria = models.ForeignKey(CategoriaEPI, on_delete=models.PROTECT, verbose_name="Categoria", null=True, blank=True)
-    marca = models.ForeignKey(MarcaEPI, on_delete=models.PROTECT, verbose_name="Marca", null=True, blank=True)
-    tamanho = models.ForeignKey(TamanhoEPI, on_delete=models.PROTECT, verbose_name="Tamanho", null=True, blank=True)
-    
-    # Texto e Inteiros
-    modelo = models.CharField(max_length=150, verbose_name="Modelo", help_text="Ex: Raspa, Vaqueta, PVC", null=True, blank=True)
-    ca = models.PositiveIntegerField(verbose_name="C.A.", help_text="Somente números", default=0)
-    
-    # Estoque
-    quantidade = models.PositiveIntegerField(default=0, verbose_name="Qtd Atual")
-    quantidade_minima = models.PositiveIntegerField(default=5, verbose_name="Qtd Mínima")
-    data_validade = models.DateField(verbose_name="Validade do CA", null=True, blank=True)
-    
-    local = models.ForeignKey(Localizacao, on_delete=models.PROTECT, verbose_name="Localização Física", null=True, blank=True)
+    modelo = models.CharField(max_length=150, null=True, blank=True)
+    ca = models.PositiveIntegerField(default=0)
+    quantidade = models.PositiveIntegerField(default=0)
+    quantidade_minima = models.PositiveIntegerField(default=5)
+    data_validade = models.DateField(null=True, blank=True)
+    local = models.ForeignKey(Localizacao, on_delete=models.PROTECT, null=True, blank=True)
     ativo = models.BooleanField(default=True)
 
     def __str__(self): 
@@ -155,42 +177,21 @@ class EPI(models.Model):
         elif self.quantidade <= (self.quantidade_minima * 1.2):
             return {'cor': 'warning', 'texto': 'Baixo', 'icon': '⚡'}
         return {'cor': 'success', 'texto': 'OK', 'icon': '✅'}
-    
-    
-    @property
-    def status_estoque(self):
-        if self.quantidade <= self.quantidade_minima:
-            return {'cor': 'danger', 'texto': 'Estoque Crítico', 'icon': '⚠️'}
-        elif self.quantidade <= (self.quantidade_minima * 1.2):
-            return {'cor': 'warning', 'texto': 'Estoque Baixo', 'icon': '⚡'}
-        else:
-            return {'cor': 'success', 'texto': 'Estoque OK', 'icon': '✅'}
 
-# Rastreabilidade (Histórico)
 class MovimentacaoEstoque(models.Model):
-    TIPO_MOVIMENTO = [
-        ('ENTRADA', '➕ Entrada (Compra/Devolução)'),
-        ('SAIDA', '➖ Saída (Entrega/Descarte)'),
-    ]
-
+    TIPO_MOVIMENTO = [('ENTRADA', '➕ Entrada'), ('SAIDA', '➖ Saída')]
     epi = models.ForeignKey(EPI, on_delete=models.CASCADE, related_name='movimentacoes')
     tipo = models.CharField(max_length=10, choices=TIPO_MOVIMENTO)
     quantidade = models.PositiveIntegerField()
     data_movimento = models.DateField(default=timezone.now)
-    
-    funcionario = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Funcionário")
-    observacao = models.CharField(max_length=255, blank=True, verbose_name="Motivo/Detalhes")
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True)
+    observacao = models.CharField(max_length=255, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self): return f"{self.get_tipo_display()} - {self.quantidade} un."
-
     def save(self, *args, **kwargs):
-        # Atualiza o saldo do EPI ao salvar o histórico (apenas se for novo registro)
         if not self.pk:
-            if self.tipo == 'ENTRADA':
-                self.epi.quantidade += self.quantidade
-            elif self.tipo == 'SAIDA':
-                self.epi.quantidade -= self.quantidade
+            if self.tipo == 'ENTRADA': self.epi.quantidade += self.quantidade
+            elif self.tipo == 'SAIDA': self.epi.quantidade -= self.quantidade
             self.epi.save()
         super().save(*args, **kwargs)
 
@@ -199,17 +200,17 @@ class MovimentacaoEstoque(models.Model):
 # ==============================================================================
 class TipoAdvertencia(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    titulo = models.CharField(max_length=100, verbose_name="Motivo da Falta")
-    descricao_padrao = models.TextField(verbose_name="Texto Padrão", blank=True)
+    titulo = models.CharField(max_length=100)
+    descricao_padrao = models.TextField(blank=True)
     def __str__(self): return self.titulo
 
 class Advertencia(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='advertencias')
-    tipo = models.ForeignKey(TipoAdvertencia, on_delete=models.PROTECT, verbose_name="Motivo")
-    data_incidente = models.DateField(verbose_name="Data do Ocorrido")
-    detalhes = models.TextField(verbose_name="Observações", blank=True)
-    reincidente = models.BooleanField(default=False, verbose_name="É reincidente?")
+    tipo = models.ForeignKey(TipoAdvertencia, on_delete=models.PROTECT)
+    data_incidente = models.DateField()
+    detalhes = models.TextField(blank=True)
+    reincidente = models.BooleanField(default=False)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -218,218 +219,152 @@ class Advertencia(models.Model):
                 self.reincidente = True
         super().save(*args, **kwargs)
 
-    def __str__(self): return f"{self.funcionario.nome} - {self.tipo.titulo}"
-
 # ==============================================================================
-# 6. PRONTUÁRIO (VACINAS, ENTREGA EPIs, TREINAMENTOS)
+# 6. PRONTUÁRIO
 # ==============================================================================
 class ControleVacina(models.Model):
     funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='vacinas')
     vacina = models.ForeignKey(Vacina, on_delete=models.PROTECT)
-    data_aplicacao = models.DateField(verbose_name="Data da Aplicação")
-    data_proximo_reforco = models.DateField(null=True, blank=True, verbose_name="Próximo Reforço")
-    comprovante = models.FileField(upload_to='vacinas_comprovantes/', blank=True, null=True, verbose_name="Comprovante")
+    data_aplicacao = models.DateField()
+    data_proximo_reforco = models.DateField(null=True, blank=True)
+    comprovante = models.FileField(upload_to='vacinas_comprovantes/', blank=True, null=True)
     
     def save(self, *args, **kwargs):
         if not self.data_proximo_reforco and self.vacina.meses_reforco > 0:
             self.data_proximo_reforco = self.data_aplicacao + timedelta(days=self.vacina.meses_reforco * 30)
         super().save(*args, **kwargs)
 
-    @property
-    def status(self):
-        if not self.data_proximo_reforco: return "Dia"
-        hj = date.today()
-        if self.data_proximo_reforco < hj: return "Vencida"
-        if (self.data_proximo_reforco - hj).days <= 30: return "A vencer"
-        return "Em dia"
-
 class EntregaEPI(models.Model):
     funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='epis_entregues')
-    epi = models.ForeignKey(EPI, on_delete=models.PROTECT, verbose_name="Item do Estoque")
+    epi = models.ForeignKey(EPI, on_delete=models.PROTECT)
     data_entrega = models.DateField(default=timezone.now)
     quantidade = models.IntegerField(default=1)
-    
-    ca_registrado = models.CharField(max_length=50, verbose_name="CA na Entrega")
-    validade_ca = models.DateField(verbose_name="Validade do CA")
-    data_devolucao = models.DateField(null=True, blank=True, verbose_name="Data de Devolução/Troca")
-    termo_assinado = models.FileField(upload_to='epis_termos/', blank=True, null=True, verbose_name="Ficha Assinada")
+    ca_registrado = models.CharField(max_length=50)
+    validade_ca = models.DateField()
+    data_devolucao = models.DateField(null=True, blank=True)
+    termo_assinado = models.FileField(upload_to='epis_termos/', blank=True, null=True)
 
     def save(self, *args, **kwargs):
         is_new = not self.pk
         if is_new:
             self.ca_registrado = str(self.epi.ca)
-            if self.epi.data_validade:
-                self.validade_ca = self.epi.data_validade
-        
+            if self.epi.data_validade: self.validade_ca = self.epi.data_validade
         super().save(*args, **kwargs)
-        
-        # Gera movimentação de SAÍDA automaticamente
         if is_new:
              MovimentacaoEstoque.objects.create(
-                epi=self.epi,
-                tipo='SAIDA',
-                quantidade=self.quantidade,
-                data_movimento=self.data_entrega,
-                funcionario=self.funcionario,
-                observacao="Entrega ao funcionário (Automático)"
+                epi=self.epi, tipo='SAIDA', quantidade=self.quantidade,
+                data_movimento=self.data_entrega, funcionario=self.funcionario,
+                observacao="Entrega ao funcionário"
             )
 
 class TreinamentoFuncionario(models.Model):
     funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='treinamentos')
-    nome_treinamento = models.CharField(max_length=200, verbose_name="Nome do Curso/Treinamento")
-    data_realizacao = models.DateField(verbose_name="Data Realização")
-    data_validade = models.DateField(null=True, blank=True, verbose_name="Validade")
+    nome_treinamento = models.CharField(max_length=200)
+    data_realizacao = models.DateField()
+    data_validade = models.DateField(null=True, blank=True)
     certificado = models.FileField(upload_to='treinamentos_certificados/', blank=True, null=True)
     
-    def __str__(self): return self.nome_treinamento
-
     @property
     def vencido(self):
         if not self.data_validade: return False
         return self.data_validade < date.today()
 
 # ==============================================================================
-# 7. GESTÃO DE EXTINTORES E EQUIPAMENTOS
+# 7. EXTINTORES E EQUIPAMENTOS
 # ==============================================================================
 class Extintor(models.Model):
-    CLASSES_INCENDIO = [('A', 'Classe A'), ('B', 'Classe B'), ('C', 'Classe C'), ('D', 'Classe D'), ('K', 'Classe K'), ('BC', 'Classes B/C'), ('ABC', 'Classes A/B/C')]
-    AGENTES = [('AGUA', 'Água'), ('PQS', 'Pó Químico'), ('CO2', 'CO2'), ('ESPUMA', 'Espuma'), ('ACETATO', 'Acetato')]
-    SITUACAO = [('ATIVO', 'Ativo'), ('MANUTENCAO', 'Em Manutenção'), ('RESERVA', 'Reserva'), ('CONDENADO', 'Condenado')]
+    CLASSES = [('A', 'Classe A'), ('BC', 'Classes B/C'), ('ABC', 'Classes A/B/C')]
+    AGENTES = [('AGUA', 'Água'), ('PQS', 'Pó Químico'), ('CO2', 'CO2')]
+    SITUACAO = [('ATIVO', 'Ativo'), ('MANUTENCAO', 'Manutenção')]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    codigo_patrimonial = models.CharField(max_length=50, verbose_name="Cód. Patrimonial")
-    numero_serie = models.CharField(max_length=100, verbose_name="Nº Série")
-    classe = models.CharField(max_length=5, choices=CLASSES_INCENDIO)
+    codigo_patrimonial = models.CharField(max_length=50)
+    numero_serie = models.CharField(max_length=100)
+    classe = models.CharField(max_length=5, choices=CLASSES)
     agente = models.CharField(max_length=20, choices=AGENTES)
-    capacidade = models.IntegerField(verbose_name="Capacidade (kg/L)")
+    capacidade = models.IntegerField()
     localizacao = models.ForeignKey(Localizacao, on_delete=models.PROTECT)
-    classe_risco = models.CharField(max_length=100, verbose_name="Risco do Local")
-    data_ultima_manutencao = models.DateField(verbose_name="Última Recarga")
-    data_proxima_manutencao = models.DateField(verbose_name="Vencimento Recarga")
-    data_teste_hidrostatico = models.DateField(verbose_name="Vencimento Teste Hidrostático")
-    empresa_mantenedora = models.CharField(max_length=200, blank=True)
-    numero_lacre = models.CharField(max_length=50, blank=True)
-    situacao = models.CharField(max_length=20, choices=SITUACAO, default='ATIVO')
-    altura_instalacao = models.DecimalField(max_digits=4, decimal_places=2)
+    classe_risco = models.CharField(max_length=100)
+    data_ultima_manutencao = models.DateField()
+    data_proxima_manutencao = models.DateField()
+    data_teste_hidrostatico = models.DateField()
+    
+    # Campo que faltava em alguns forms
+    altura_instalacao = models.DecimalField(max_digits=4, decimal_places=2, default=1.50) 
     sinalizacao_ok = models.BooleanField(default=True)
     acesso_livre = models.BooleanField(default=True)
+    
+    situacao = models.CharField(max_length=20, choices=SITUACAO, default='ATIVO')
     qrcode_imagem = models.ImageField(upload_to='qrcodes_extintores/', blank=True, null=True)
 
-    def __str__(self): return f"{self.codigo_patrimonial} ({self.get_agente_display()})"
-    
-    @property
-    def alerta_manutencao(self):
-        if not self.data_proxima_manutencao: return False
-        return (self.data_proxima_manutencao - date.today()).days <= 30
+    def __str__(self): return self.codigo_patrimonial
 
 class InspecaoExtintor(models.Model):
     extintor = models.ForeignKey(Extintor, on_delete=models.CASCADE, related_name='inspecoes')
     data_inspecao = models.DateField(default=timezone.now)
     responsavel = models.CharField(max_length=150)
+    
+    # Campos booleanos de check-list
     lacre_intacto = models.BooleanField(default=True)
     manometro_pressao_ok = models.BooleanField(default=True)
-    sinalizacao_visivel = models.BooleanField(default=True)
-    acesso_livre = models.BooleanField(default=True)
     mangueira_integra = models.BooleanField(default=True)
+    
     observacoes = models.TextField(blank=True)
-    
-    def __str__(self): return f"Inspeção {self.extintor.codigo_patrimonial} em {self.data_inspecao}"
-    
+
 class FotoInspecao(models.Model):
     inspecao = models.ForeignKey(InspecaoExtintor, on_delete=models.CASCADE, related_name='fotos')
     imagem = models.ImageField(upload_to='inspecoes_extintores/')
-    data_upload = models.DateTimeField(auto_now_add=True)
 
 class Equipamento(models.Model):
-    TIPOS = [('HIDRANTE', 'Hidrante'), ('MANGUEIRA', 'Mangueira'), ('ALARME', 'Alarme'), ('LUZ', 'Luz Emergência'), ('PLACA', 'Placa'), ('PORTA', 'Porta Corta-Fogo'), ('OUTRO', 'Outros')]
+    TIPOS = [('HIDRANTE', 'Hidrante'), ('ALARME', 'Alarme'), ('LUZ', 'Luz Emergência')]
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     tipo = models.CharField(max_length=20, choices=TIPOS)
     nome = models.CharField(max_length=100)
     localizacao = models.ForeignKey(Localizacao, on_delete=models.PROTECT)
-    data_instalacao = models.DateField(null=True, blank=True)
     data_validade = models.DateField(null=True, blank=True)
-    especificacao = models.CharField(max_length=255, blank=True)
-    ativo = models.BooleanField(default=True)
-    imagem = models.ImageField(upload_to='outros_equipamentos/', blank=True, null=True)
-
-    def __str__(self): return f"{self.get_tipo_display()} - {self.nome}"
-    
-    @property
-    def status_validade(self):
-        if not self.data_validade: return "ok"
-        dias = (self.data_validade - date.today()).days
-        if dias < 0: return "vencido"
-        if dias <= 30: return "alerta"
-        return "ok"
+    qrcode_data = models.CharField(max_length=255, blank=True, null=True)
 
 class InspecaoEquipamento(models.Model):
     equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE, related_name='inspecoes')
     data_inspecao = models.DateField(default=timezone.now)
     responsavel = models.CharField(max_length=150)
-    item_integro = models.BooleanField(default=True)
-    acesso_livre = models.BooleanField(default=True)
-    sinalizacao_ok = models.BooleanField(default=True)
-    teste_funcional = models.BooleanField(default=True)
+    status = models.CharField(max_length=20, default='OK')
     observacoes = models.TextField(blank=True)
 
 class ArquivoInspecao(models.Model):
     inspecao = models.ForeignKey(InspecaoEquipamento, on_delete=models.CASCADE, related_name='arquivos')
     arquivo = models.FileField(upload_to='inspecoes_equipamentos/')
-    data_upload = models.DateTimeField(auto_now_add=True)
-    
-    @property
-    def eh_imagem(self):
-        ext = os.path.splitext(self.arquivo.name)[1].lower()
-        return ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']
 
 # ==============================================================================
-# 8. OUTROS (AFASTAMENTO, ACIDENTE, QUÍMICOS, HOSPITAIS)
+# 8. OUTROS
 # ==============================================================================
 class Afastamento(models.Model):
     funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='afastamentos')
-    data_inicio = models.DateField(verbose_name="Data de Início")
+    data_inicio = models.DateField()
     data_retorno = models.DateField(null=True, blank=True)
-    motivo = models.TextField(verbose_name="Motivo / CID")
+    motivo = models.TextField()
     laudo = models.FileField(upload_to='afastamentos_laudos/', blank=True, null=True)
-    criado_em = models.DateTimeField(auto_now_add=True)
-
-    @property
-    def dias_afastado(self):
-        if self.data_retorno: return (self.data_retorno - self.data_inicio).days
-        return (date.today() - self.data_inicio).days
 
 class AcidenteTrabalho(models.Model):
     funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='acidentes')
     data_acidente = models.DateField(verbose_name="Data do Acidente")
-    hora_acidente = models.TimeField(verbose_name="Hora")
-    local = models.CharField(max_length=255, verbose_name="Local do Acidente")
-    descricao_motivo = models.TextField(verbose_name="Descrição")
-    arquivo_evidencia = models.FileField(upload_to='acidentes_arquivos/', blank=True, null=True)
+    hora_acidente = models.TimeField(verbose_name="Hora", null=True, blank=True)
+    local = models.CharField(max_length=255, verbose_name="Local do Acidente", null=True, blank=True)
+    arquivo_evidencia = models.FileField(upload_to='acidentes_arquivos/', blank=True, null=True, verbose_name="Arquivo/Evidência")
+    descricao_motivo = models.TextField(verbose_name="Descrição do Ocorrido")
+    cat_emitida = models.BooleanField(default=False, verbose_name="CAT Emitida?")
     criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self): return f"Acidente - {self.funcionario.nome}"
 
 class ProdutoQuimico(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    nome = models.CharField(max_length=200, verbose_name="Nome do Produto")
-    fabricante = models.CharField(max_length=200, verbose_name="Fabricante")
-    riscos = models.TextField(verbose_name="Riscos")
-    telefone_emergencia = models.CharField(max_length=50)
-    lote = models.CharField(max_length=50, blank=True)
-    data_fabricacao = models.DateField(null=True, blank=True)
+    nome = models.CharField(max_length=200)
+    fabricante = models.CharField(max_length=200)
+    classificacao = models.CharField(max_length=100, default='Geral')
     data_validade = models.DateField()
     localizacao = models.ForeignKey(Localizacao, on_delete=models.PROTECT)
-    quantidade = models.CharField(max_length=50)
     fispq = models.FileField(upload_to='produtos_quimicos_fispq/', blank=True, null=True)
-    foto_rotulo = models.ImageField(upload_to='produtos_quimicos_fotos/', blank=True, null=True)
-    criado_em = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self): return self.nome
-    
-    @property
-    def status_validade(self):
-        dias = (self.data_validade - date.today()).days
-        if dias < 0: return "vencido"
-        if dias <= 30: return "alerta"
-        return "ok"
 
 class TipoEspecialidade(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
@@ -441,8 +376,6 @@ class Hospital(models.Model):
     nome = models.CharField(max_length=200)
     telefone = models.CharField(max_length=50)
     endereco = models.CharField(max_length=255)
-    horario_atendimento = models.CharField(max_length=100, default="24 Horas")
+    horario_atendimento = models.CharField(max_length=100)
     especialidades = models.ManyToManyField(TipoEspecialidade)
     mapa_link = models.URLField(blank=True, null=True)
-    criado_em = models.DateTimeField(auto_now_add=True)
-    def __str__(self): return self.nome

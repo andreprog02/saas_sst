@@ -1,86 +1,333 @@
 {% extends 'dashboard.html' %}
+{% load static %}
+
+{% block title %}Colaboradores{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<style>
+    /* Estilos Específicos para esta página */
+    .page-header {
+        margin-bottom: 2rem;
+    }
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    /* Cards de Estatísticas */
+    .stat-widget {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: transform 0.2s;
+    }
+    .stat-widget:hover { transform: translateY(-2px); }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: #0f172a; line-height: 1; }
+    .stat-label { font-size: 0.875rem; color: #64748b; font-weight: 500; }
+
+    /* Barra de Ferramentas */
+    .toolbar {
+        background: white;
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .search-box {
+        position: relative;
+        min-width: 300px;
+    }
+    .search-box input {
+        padding-left: 2.5rem;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background-color: #f8fafc;
+    }
+    .search-box i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+    }
+
+    /* Tabela Premium */
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+    }
+    .table-lovable {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table-lovable thead th {
+        background-color: #f8fafc;
+        color: #64748b;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .table-lovable tbody td {
+        padding: 1rem 1.5rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+        font-size: 0.95rem;
+        background: white;
+        transition: background 0.15s;
+    }
+    .table-lovable tbody tr:hover td {
+        background-color: #f8fafc;
+    }
+    .table-lovable tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Badges de Status (Estilo Soft) */
+    .badge-soft {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .badge-soft::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: currentColor;
+    }
+    /* Cores Específicas */
+    .bg-soft-success { background-color: #dcfce7; color: #166534; } /* Verde */
+    .bg-soft-warning { background-color: #fef9c3; color: #854d0e; } /* Amarelo */
+    .bg-soft-danger  { background-color: #fee2e2; color: #991b1b; } /* Vermelho */
+    .bg-soft-info    { background-color: #dbeafe; color: #1e40af; } /* Azul */
+    .bg-soft-secondary { background-color: #f1f5f9; color: #475569; } /* Cinza */
+
+    /* Avatar na Tabela */
+    .user-info { display: flex; align-items: center; gap: 12px; }
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #e2e8f0;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+    .user-details h6 { margin: 0; font-size: 0.95rem; font-weight: 600; color: #0f172a; }
+    .user-details span { font-size: 0.8rem; color: #64748b; }
+
+    /* Botão de Ação (3 dots) */
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        transition: all 0.2s;
+    }
+    .btn-icon:hover { background-color: #f1f5f9; color: #0f172a; }
+</style>
+
+<div class="container-fluid px-4 py-4">
+    
+    <div class="d-flex justify-content-between align-items-center page-header">
         <div>
-            <h2>👥 Funcionários</h2>
-            <p class="text-muted mb-0">Gerencie a equipe e acompanhe a situação de cada colaborador.</p>
+            <h2 class="fw-bold text-dark mb-1">Colaboradores</h2>
+            <p class="text-muted mb-0">Gerencie sua equipe, prontuários e acessos.</p>
         </div>
-        <div>
-            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary me-2">Voltar</a>
-            <a href="{% url 'criar_funcionario' %}" class="btn btn-success fw-bold">+ Novo Funcionário</a>
+        <a href="{% url 'novo_funcionario' %}" class="btn btn-primary shadow-sm px-4 py-2 fw-medium">
+            <i class="fas fa-plus me-2"></i> Adicionar Colaborador
+        </a>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stat-widget">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ funcionarios.count }}</div>
+                    <div class="stat-label">Total de Colaboradores</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-widget">
+                <div class="stat-icon bg-success bg-opacity-10 text-success">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div>
+                    <div class="stat-value">
+                        {% with ativos=0 %}
+                            {% for f in funcionarios %}{% if f.situacao == 'ATIVO' %}{{ 1|add:ativos }}{% endif %}{% endfor %}
+                            {{ funcionarios.count }} {% endwith %}
+                    </div>
+                    <div class="stat-label">Em Atividade</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-widget">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                    <i class="fas fa-user-clock"></i>
+                </div>
+                <div>
+                    <div class="stat-value">-</div>
+                    <div class="stat-label">Afastados / Férias</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-4">Nome / CPF</th>
-                            <th>Cargo / Setor</th>
-                            <th>Admissão</th>
-                            <th>Situação Atual</th>
-                            <th class="text-end pe-4">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for func in funcionarios %}
-                        <tr>
-                            <td class="ps-4">
-                                <div class="fw-bold text-dark">{{ func.nome }}</div>
-                                <small class="text-muted">{{ func.cpf }}</small>
-                            </td>
-                            <td>
-                                <div class="fw-bold">{{ func.cargo }}</div>
-                                {% if func.setor %}
-                                    <span class="badge bg-light text-dark border">{{ func.setor.nome }}</span>
-                                {% else %}
-                                    <span class="text-muted small">Sem setor definido</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {{ func.data_admissao|date:"d/m/Y" }}
-                            </td>
-                            <td>
-                                <span class="badge bg-{{ func.cor_status }} bg-opacity-75 px-3 py-2 rounded-pill border border-{{ func.cor_status }}">
-                                    {{ func.get_situacao_display }}
-                                </span>
-                                
-                                {% if func.situacao != 'ATIVO' and func.motivo_afastamento %}
-                                    <br>
-                                    <small class="text-muted" style="font-size: 0.75rem;">
-                                        Obs: {{ func.motivo_afastamento|truncatechars:25 }}
-                                    </small>
-                                {% endif %}
-                            </td>
-                            <td class="text-end pe-4">
-                                <a href="{% url 'editar_funcionario' func.id %}" class="btn btn-sm btn-outline-secondary me-1" title="Editar Cadastro">
-                                    ✏️
-                                </a>
-                                
-                                <a href="{% url 'detalhe_funcionario' func.id %}" class="btn btn-sm btn-primary fw-bold" title="Ver Prontuário Completo">
-                                    📂 Prontuário
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center py-5">
-                                <div class="text-muted">
-                                    <h4>Nenhum funcionário encontrado</h4>
-                                    <p>Cadastre seus colaboradores para gerenciar EPIs, Vacinas e Afastamentos.</p>
-                                    <a href="{% url 'criar_funcionario' %}" class="btn btn-success mt-2">+ Cadastrar Primeiro</a>
+    <div class="toolbar">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" class="form-control" placeholder="Buscar por nome, cargo ou CPF...">
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm px-3"><i class="fas fa-filter me-2"></i>Filtrar</button>
+            <button class="btn btn-outline-secondary btn-sm px-3"><i class="fas fa-download me-2"></i>Exportar</button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div class="table-responsive">
+            <table class="table table-lovable mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 35%;">Colaborador</th>
+                        <th>Cargo</th>
+                        <th>Setor</th>
+                        <th>Status</th>
+                        <th>Admissão</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for funcionario in funcionarios %}
+                    <tr>
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar">
+                                    {{ funcionario.nome|slice:":2"|upper }}
                                 </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                                <div class="user-details">
+                                    <a href="{% url 'detalhe_funcionario' funcionario.id %}" class="text-decoration-none text-dark">
+                                        <h6>{{ funcionario.nome }}</h6>
+                                    </a>
+                                    <span>{{ funcionario.cpf }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <td class="fw-medium text-dark">{{ funcionario.cargo }}</td>
+                        
+                        <td>
+                            <span class="text-muted"><i class="fas fa-layer-group me-1 opacity-50"></i> {{ funcionario.setor.nome|default:"-" }}</span>
+                        </td>
+                        
+                        <td>
+                            {% if funcionario.situacao == 'ATIVO' %}
+                                <span class="badge-soft bg-soft-success">Ativo</span>
+                            {% elif funcionario.situacao == 'FERIAS' %}
+                                <span class="badge-soft bg-soft-info">Férias</span>
+                            {% elif funcionario.situacao == 'AFASTADO' %}
+                                <span class="badge-soft bg-soft-warning">Afastado</span>
+                            {% else %}
+                                <span class="badge-soft bg-soft-secondary">{{ funcionario.get_situacao_display }}</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-muted font-monospace small">{{ funcionario.data_admissao|date:"d/m/Y" }}</td>
+
+                        <td class="text-end">
+                            <div class="dropdown">
+                                <button class="btn btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; padding: 0.5rem;">
+                                    <li>
+                                        <a class="dropdown-item py-2 rounded" href="{% url 'detalhe_funcionario' funcionario.id %}">
+                                            <i class="fas fa-file-medical me-2 text-primary"></i> Abrir Prontuário
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 rounded" href="{% url 'editar_funcionario' funcionario.id %}">
+                                            <i class="fas fa-pencil-alt me-2 text-muted"></i> Editar Dados
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item py-2 rounded text-danger" href="#">
+                                            <i class="fas fa-trash-alt me-2"></i> Arquivar
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <div class="d-flex flex-column align-items-center justify-content-center">
+                                <div class="bg-light rounded-circle p-4 mb-3">
+                                    <i class="fas fa-users fa-3x text-muted opacity-50"></i>
+                                </div>
+                                <h6 class="text-dark fw-bold">Nenhum colaborador encontrado</h6>
+                                <p class="text-muted small mb-3">Comece adicionando os membros da sua equipe.</p>
+                                <a href="{% url 'novo_funcionario' %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus me-1"></i> Adicionar Agora
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center p-3 border-top bg-light bg-opacity-25">
+            <span class="text-muted small">Mostrando <strong>{{ funcionarios.count }}</strong> resultados</span>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item disabled"><a class="page-link border-0 bg-transparent" href="#">Anterior</a></li>
+                    <li class="page-item active"><a class="page-link border-0 rounded-circle" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link border-0 bg-transparent" href="#">Próximo</a></li>
+                </ul>
+            </nav>
         </div>
     </div>
 </div>

@@ -1,323 +1,632 @@
 {% extends 'dashboard.html' %}
+{% load static %}
+
+{% block title %}Prontuário: {{ funcionario.nome }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4 mb-5">
+<style>
+    /* --- Estilos Específicos desta Página (Estilo Lovable) --- */
     
-    <div class="card mb-4 shadow-sm border-{{ funcionario.cor_status }}" style="border-width: 2px;">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <h2 class="text-{{ funcionario.cor_status }} mb-1">
-                        {{ funcionario.nome }}
-                    </h2>
-                    
-                    <span class="badge bg-{{ funcionario.cor_status }} mb-2" style="font-size: 0.9rem;">
-                        {{ funcionario.get_situacao_display }}
-                    </span>
+    /* Ícones do Perfil Lateral */
+    .icon-box-sm {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+        transition: transform 0.2s;
+    }
+    .icon-box-sm:hover { transform: scale(1.05); }
 
-                    <p class="mb-0 text-muted mt-2">
-                        <strong>Cargo:</strong> {{ funcionario.cargo }} | 
-                        <strong>Setor:</strong> {{ funcionario.setor.nome }} | 
-                        <strong>CPF:</strong> {{ funcionario.cpf }}
-                    </p>
-                    <small>Admissão: {{ funcionario.data_admissao|date:"d/m/Y" }}</small>
-                </div>
-                
-                <div class="d-flex flex-column gap-2">
-                    <a href="{% url 'lista_funcionarios' %}" class="btn btn-outline-secondary btn-sm">Voltar p/ Lista</a>
+    /* Texto truncado para email longo */
+    .text-truncate-custom {
+        max-width: 180px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    /* Ajuste fino dos Cards */
+    .card-profile {
+        border: none;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    /* Inputs dentro dos Modais */
+    .modal-body input, .modal-body select, .modal-body textarea {
+        width: 100%;
+        padding: 10px 12px;
+        margin-bottom: 15px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background-color: #f8fafc;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+    }
+    .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus {
+        border-color: var(--primary);
+        background-color: #fff;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .modal-body label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: block;
+    }
+</style>
+
+<div class="container-fluid px-4 py-4">
+
+    <a href="{% url 'lista_funcionarios' %}" class="text-decoration-none text-muted mb-4 d-inline-flex align-items-center gap-2 fw-medium">
+        <div class="icon-box-sm bg-white border"><i class="fas fa-arrow-left"></i></div>
+        Voltar para Lista
+    </a>
+
+    <div class="row g-4">
+        
+        <div class="col-lg-4 col-xl-3">
+            <div class="card card-profile h-100 sticky-top" style="top: 90px; z-index: 1;">
+                <div class="card-body pt-5 pb-4">
                     
-                    <a href="{% url 'editar_funcionario' funcionario.id %}" class="btn btn-primary btn-sm shadow-sm">
-                        ✏️ Editar Dados
-                    </a>
+                    <div class="text-center mb-4">
+                        <div class="avatar-circle-lg mx-auto mb-3 shadow-sm border border-4 border-white" style="width: 100px; height: 100px; font-size: 2.5rem;">
+                            {% if funcionario.foto %}
+                                <img src="{{ funcionario.foto.url }}" alt="{{ funcionario.nome }}" class="img-fluid rounded-circle w-100 h-100" style="object-fit: cover;">
+                            {% else %}
+                                {{ funcionario.nome|slice:":2"|upper }}
+                            {% endif %}
+                        </div>
+                        
+                        <h4 class="fw-bold text-dark mb-1">{{ funcionario.nome }}</h4>
+                        <div class="text-muted fw-medium mb-3">{{ funcionario.cargo }}</div>
+                        
+                        <span class="badge rounded-pill bg-{{ funcionario.cor_status }} bg-opacity-10 text-{{ funcionario.cor_status }} px-3 py-2 border border-{{ funcionario.cor_status }} border-opacity-10">
+                            {{ funcionario.get_situacao_display }}
+                        </span>
+                    </div>
+
+                    <hr class="my-4 opacity-25">
+
+                    <div class="d-flex flex-column gap-3 px-1">
+                        
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="icon-box-sm bg-primary bg-opacity-10 text-primary me-3">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="d-flex flex-column" style="min-width: 0;">
+                                <small class="text-uppercase fw-bold" style="font-size: 0.65rem;">E-mail</small>
+                                <span class="text-dark text-truncate-custom fw-medium" title="{{ funcionario.email }}">
+                                    {{ funcionario.email|default:"--" }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="icon-box-sm bg-success bg-opacity-10 text-success me-3">
+                                <i class="fas fa-phone"></i>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <small class="text-uppercase fw-bold" style="font-size: 0.65rem;">Telefone</small>
+                                <span class="text-dark fw-medium">{{ funcionario.telefone|default:"--" }}</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="icon-box-sm bg-warning bg-opacity-10 text-warning me-3">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <small class="text-uppercase fw-bold" style="font-size: 0.65rem;">Setor</small>
+                                <span class="text-dark fw-medium">{{ funcionario.setor.nome|default:"Não alocado" }}</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="icon-box-sm bg-info bg-opacity-10 text-info me-3">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <small class="text-uppercase fw-bold" style="font-size: 0.65rem;">Admissão</small>
+                                <span class="text-dark fw-medium">{{ funcionario.data_admissao|date:"d/m/Y" }}</span>
+                                <small class="text-primary fw-bold" style="font-size: 0.75rem;">
+                                    {{ funcionario.data_admissao|timesince }} de casa
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="icon-box-sm bg-secondary bg-opacity-10 text-secondary me-3">
+                                <i class="fas fa-id-badge"></i>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <small class="text-uppercase fw-bold" style="font-size: 0.65rem;">Matrícula</small>
+                                <span class="text-dark fw-medium">{{ funcionario.matricula|default:"--" }}</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <hr class="my-4 opacity-25">
+
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'editar_funcionario' funcionario.id %}" class="btn btn-outline-primary fw-bold">
+                            <i class="fas fa-pen me-2"></i> Editar Perfil
+                        </a>
+                    </div>
+
                 </div>
             </div>
+        </div>
 
-            {% if funcionario.motivo_afastamento %}
-                <div class="alert alert-light border border-warning mt-3 mb-0 p-2 d-flex align-items-center">
-                    <span class="fs-4 me-2">📝</span>
-                    <div>
-                        <strong>Observação da Situação:</strong>
-                        <br>
-                        {{ funcionario.motivo_afastamento }}
+        <div class="col-lg-8 col-xl-9">
+            <div class="card card-profile" style="min-height: 600px;">
+                
+                <div class="card-header bg-white border-0 px-4 pt-4 pb-0">
+                    <ul class="nav nav-tabs nav-tabs-modern" id="prontuarioTab" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-geral">
+                                <i class="fas fa-user-circle me-2"></i>Geral
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-epis">
+                                <i class="fas fa-hard-hat me-2"></i>EPIs
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-vacinas">
+                                <i class="fas fa-syringe me-2"></i>Vacinas
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-treinamentos">
+                                <i class="fas fa-graduation-cap me-2"></i>Treinos
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ocorrencias">
+                                <i class="fas fa-folder-open me-2"></i>Ocorrências
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card-body p-4 bg-light bg-opacity-25">
+                    <div class="tab-content">
+                        
+                        <div class="tab-pane fade show active" id="tab-geral">
+                            <h5 class="fw-bold mb-4 text-dark">Informações Detalhadas</h5>
+
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <div class="card h-100 border-0 shadow-sm">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div class="icon-box-sm bg-primary bg-opacity-10 text-primary me-2"><i class="fas fa-id-card"></i></div>
+                                                <h6 class="fw-bold mb-0">Dados Pessoais</h6>
+                                            </div>
+                                            <div class="row g-3">
+                                                <div class="col-12">
+                                                    <label class="text-muted small fw-bold text-uppercase">Nome Completo</label>
+                                                    <div class="fw-medium text-dark border-bottom pb-1">{{ funcionario.nome }}</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="text-muted small fw-bold text-uppercase">CPF</label>
+                                                    <div class="fw-medium text-dark">{{ funcionario.cpf }}</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="text-muted small fw-bold text-uppercase">RG</label>
+                                                    <div class="fw-medium text-dark">{{ funcionario.rg|default:"-" }}</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="text-muted small fw-bold text-uppercase">Nascimento</label>
+                                                    <div class="fw-medium text-dark">{{ funcionario.data_nascimento|date:"d/m/Y"|default:"-" }}</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="text-muted small fw-bold text-uppercase">Idade</label>
+                                                    <div class="fw-medium text-dark">{{ funcionario.data_nascimento|timesince|default:"-" }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border-0 shadow-sm">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div class="icon-box-sm bg-success bg-opacity-10 text-success me-2"><i class="fas fa-address-book"></i></div>
+                                                <h6 class="fw-bold mb-0">Canais de Contato</h6>
+                                            </div>
+                                            <div class="row g-3">
+                                                <div class="col-12">
+                                                    <label class="text-muted small fw-bold text-uppercase">E-mail Corporativo/Pessoal</label>
+                                                    <div class="fw-medium text-dark border-bottom pb-1">{{ funcionario.email|default:"Não informado" }}</div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <label class="text-muted small fw-bold text-uppercase">Telefone / WhatsApp</label>
+                                                    <div class="fw-medium text-dark border-bottom pb-1">{{ funcionario.telefone|default:"Não informado" }}</div>
+                                                </div>
+                                                <div class="col-12 mt-3">
+                                                    <div class="alert alert-light border border-dashed d-flex align-items-center gap-2 mb-0">
+                                                        <i class="fas fa-info-circle text-muted"></i>
+                                                        <small class="text-muted">Mantenha os dados de contato sempre atualizados para notificações.</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div class="icon-box-sm bg-dark bg-opacity-10 text-dark me-2"><i class="fas fa-briefcase"></i></div>
+                                                <h6 class="fw-bold mb-0">Vínculo Empresarial</h6>
+                                            </div>
+                                            <div class="row g-3">
+                                                <div class="col-md-3">
+                                                    <label class="text-muted small fw-bold text-uppercase">Matrícula</label>
+                                                    <div class="fw-medium text-dark">{{ funcionario.matricula|default:"-" }}</div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="text-muted small fw-bold text-uppercase">Cargo Atual</label>
+                                                    <div class="fw-medium text-dark">{{ funcionario.cargo }}</div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="text-muted small fw-bold text-uppercase">Departamento</label>
+                                                    <div class="fw-medium text-dark">{{ funcionario.setor.nome|default:"-" }}</div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="text-muted small fw-bold text-uppercase">Data Admissão</label>
+                                                    <div class="fw-medium text-dark">{{ funcionario.data_admissao|date:"d/m/Y" }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-epis">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h5 class="fw-bold mb-0 text-dark">Histórico de Equipamentos</h5>
+                                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalEPI">
+                                    <i class="fas fa-plus me-1"></i> Entregar EPI
+                                </button>
+                            </div>
+                            
+                            <div class="card border-0 shadow-sm">
+                                <div class="table-responsive">
+                                    <table class="table table-modern align-middle mb-0">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th>Data Entrega</th>
+                                                <th>Equipamento</th>
+                                                <th>CA</th>
+                                                <th>Validade CA</th>
+                                                <th class="text-center">Ficha</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for entrega in epis %}
+                                            <tr>
+                                                <td>{{ entrega.data_entrega|date:"d/m/Y" }}</td>
+                                                <td>
+                                                    <div class="fw-semibold text-dark">{{ entrega.epi }}</div>
+                                                    <small class="text-muted">Qtd: {{ entrega.quantidade }}</small>
+                                                </td>
+                                                <td><span class="badge bg-light text-dark border">{{ entrega.ca_registrado }}</span></td>
+                                                <td>{{ entrega.validade_ca|date:"d/m/Y" }}</td>
+                                                <td class="text-center">
+                                                    {% if entrega.termo_assinado %}
+                                                        <a href="{{ entrega.termo_assinado.url }}" target="_blank" class="btn btn-sm btn-light text-success" title="Ver Termo Assinado">
+                                                            <i class="fas fa-file-signature"></i>
+                                                        </a>
+                                                    {% else %}
+                                                        <span class="text-muted opacity-50"><i class="fas fa-times"></i></span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr><td colspan="5" class="text-center py-5 text-muted">Nenhum EPI entregue a este colaborador.</td></tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-vacinas">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h5 class="fw-bold mb-0 text-dark">Carteira de Vacinação</h5>
+                                <button class="btn btn-success btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalVacina">
+                                    <i class="fas fa-plus me-1"></i> Registrar Vacina
+                                </button>
+                            </div>
+                            
+                            <div class="row g-3">
+                                {% for v in vacinas %}
+                                <div class="col-md-6">
+                                    <div class="p-3 border-0 shadow-sm rounded-3 bg-white d-flex justify-content-between align-items-center h-100">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="icon-box-sm bg-success bg-opacity-10 text-success rounded-circle">
+                                                <i class="fas fa-syringe"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold mb-1 text-dark">{{ v.vacina.nome }}</h6>
+                                                <div class="small text-muted">Aplicada: {{ v.data_aplicacao|date:"d/m/Y" }}</div>
+                                                <div class="small mt-1">
+                                                    Reforço: 
+                                                    {% if v.status == 'Vencida' %}
+                                                        <span class="text-danger fw-bold bg-danger bg-opacity-10 px-2 py-0 rounded">{{ v.data_proximo_reforco|date:"d/m/Y" }}</span>
+                                                    {% else %}
+                                                        <span class="text-success">{{ v.data_proximo_reforco|date:"d/m/Y"|default:"Dose Única" }}</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% if v.comprovante %}
+                                            <a href="{{ v.comprovante.url }}" target="_blank" class="btn btn-light border btn-sm text-primary">
+                                                <i class="fas fa-paperclip"></i>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="col-12 text-center text-muted py-5 bg-white rounded shadow-sm">
+                                    <i class="fas fa-syringe fa-2x mb-3 opacity-25"></i>
+                                    <p class="mb-0">Nenhuma vacina registrada.</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-treinamentos">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h5 class="fw-bold mb-0 text-dark">Capacitações e NRs</h5>
+                                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalTreinamento">
+                                    <i class="fas fa-plus me-1"></i> Novo Curso
+                                </button>
+                            </div>
+                            
+                            <div class="card border-0 shadow-sm">
+                                <table class="table table-modern align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Curso / Treinamento</th>
+                                            <th>Realização</th>
+                                            <th>Vencimento</th>
+                                            <th class="text-center">Certif.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for t in treinamentos %}
+                                        <tr>
+                                            <td class="fw-semibold text-dark">{{ t.nome_treinamento }}</td>
+                                            <td>{{ t.data_realizacao|date:"d/m/Y" }}</td>
+                                            <td>
+                                                {% if t.vencido %}
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
+                                                        {{ t.data_validade|date:"d/m/Y" }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-success">{{ t.data_validade|date:"d/m/Y"|default:"Vitalício" }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">
+                                                {% if t.certificado %}
+                                                    <a href="{{ t.certificado.url }}" target="_blank" class="text-primary"><i class="fas fa-file-pdf fa-lg"></i></a>
+                                                {% else %} - {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr><td colspan="4" class="text-center py-5 text-muted">Nenhum treinamento registrado.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-ocorrencias">
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                                            <h6 class="fw-bold text-danger mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Advertências</h6>
+                                            <button class="btn btn-outline-danger btn-sm py-1 px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#modalAdvertencia">Nova</button>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            {% for adv in advertencias %}
+                                                <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <div class="text-danger fw-bold">{{ adv.tipo.titulo }}</div>
+                                                        <small class="text-muted">Data: {{ adv.data_incidente|date:"d/m/Y" }}</small>
+                                                    </div>
+                                                    <a href="{% url 'documento_advertencia' adv.id %}" target="_blank" class="btn btn-sm btn-light text-danger"><i class="fas fa-print"></i></a>
+                                                </div>
+                                            {% empty %}
+                                                <div class="p-4 text-center text-muted small fst-italic">Nenhuma advertência registrada.</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card border-0 shadow-sm h-100">
+                                        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                                            <h6 class="fw-bold text-secondary mb-0"><i class="fas fa-user-injured me-2"></i>Afastamentos</h6>
+                                            <button class="btn btn-outline-secondary btn-sm py-1 px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#modalAfastamento">Novo</button>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul class="list-group list-group-flush">
+                                                {% for af in afastamentos %}
+                                                    <li class="list-group-item px-0 border-0 mb-2">
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <div class="badge bg-secondary">CID</div>
+                                                            <span class="fw-bold text-dark">{{ af.data_inicio|date:"d/m/Y" }}</span>
+                                                        </div>
+                                                        <div class="small text-muted mt-1 ms-1">{{ af.motivo }}</div>
+                                                    </li>
+                                                {% empty %}
+                                                    <li class="text-muted small fst-italic text-center py-3">Sem registros.</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card border-0 shadow-sm h-100">
+                                        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                                            <h6 class="fw-bold text-dark mb-0"><i class="fas fa-crutch me-2"></i>Acidentes (CAT)</h6>
+                                            <button class="btn btn-outline-dark btn-sm py-1 px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#modalAcidente">Registrar</button>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul class="list-group list-group-flush">
+                                                {% for ac in acidentes %}
+                                                    <li class="list-group-item px-0 border-0 mb-2">
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <i class="fas fa-calendar text-danger"></i>
+                                                            <span class="fw-bold text-dark">{{ ac.data_acidente|date:"d/m/Y" }}</span>
+                                                        </div>
+                                                        <div class="small text-muted mt-1 ms-4">{{ ac.descricao_motivo|truncatechars:40 }}</div>
+                                                    </li>
+                                                {% empty %}
+                                                    <li class="text-muted small fst-italic text-center py-3">Sem acidentes.</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="row">
-        
-        <div class="col-md-6 mb-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">💉 Carteira de Vacinação</h5>
-                    <a href="{% url 'adicionar_vacina_func' funcionario.id %}" class="btn btn-sm btn-light text-success fw-bold shadow-sm">+ Registrar Dose</a>
-                </div>
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover mb-0 text-center table-sm align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Vacina</th>
-                                <th>Data</th>
-                                <th>Reforço</th>
-                                <th>Anexo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for v in vacinas %}
-                            <tr>
-                                <td class="text-start ps-3 fw-bold">{{ v.vacina.nome }}</td>
-                                <td>{{ v.data_aplicacao|date:"d/m/y" }}</td>
-                                <td>
-                                    {% if v.status == 'Vencida' %}
-                                        <span class="badge bg-danger">{{ v.data_proximo_reforco|date:"d/m/y" }}</span>
-                                    {% elif v.status == 'A vencer' %}
-                                        <span class="badge bg-warning text-dark">{{ v.data_proximo_reforco|date:"d/m/y" }}</span>
-                                    {% else %}
-                                        <span class="text-success fw-bold">{{ v.data_proximo_reforco|date:"d/m/y"|default:"-" }}</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if v.comprovante %}
-                                        <a href="{{ v.comprovante.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Ver Comprovante">📎</a>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhuma vacina registrada.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
             </div>
         </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">🦺 Histórico de EPIs</h5>
-                    <a href="{% url 'adicionar_epi_func' funcionario.id %}" class="btn btn-sm btn-dark text-warning fw-bold shadow-sm">+ Entregar EPI</a>
-                </div>
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover mb-0 text-center table-sm align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>EPI</th>
-                                <th>Entrega</th>
-                                <th>C.A.</th>
-                                <th>Ficha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for epi in epis %}
-                            <tr>
-                                <td class="text-start ps-3">
-                                    <strong>{{ epi.epi.tipo.nome }}</strong>
-                                    <br><small class="text-muted">{{ epi.epi.tamanho }}</small>
-                                </td>
-                                <td>{{ epi.data_entrega|date:"d/m/y" }}</td>
-                                <td>
-                                    {{ epi.ca_registrado }}
-                                    {% if epi.validade_ca < today %}
-                                        <span class="text-danger" title="CA Vencido">⚠️</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if epi.termo_assinado %}
-                                        <a href="{{ epi.termo_assinado.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Ficha Assinada">📄</a>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhum EPI entregue.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">🎓 Treinamentos & Cursos</h5>
-                    <a href="{% url 'adicionar_treinamento_func' funcionario.id %}" class="btn btn-sm btn-light text-info fw-bold shadow-sm">+ Add Curso</a>
-                </div>
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover mb-0 text-center table-sm align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Curso</th>
-                                <th>Data</th>
-                                <th>Validade</th>
-                                <th>Cert.</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for t in treinamentos %}
-                            <tr>
-                                <td class="text-start ps-3 fw-bold">{{ t.nome_treinamento }}</td>
-                                <td>{{ t.data_realizacao|date:"d/m/y" }}</td>
-                                <td>
-                                    {% if t.vencido %}
-                                        <span class="badge bg-danger">{{ t.data_validade|date:"d/m/y" }}</span>
-                                    {% else %}
-                                        {{ t.data_validade|date:"d/m/y"|default:"Indefinida" }}
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if t.certificado %}
-                                        <a href="{{ t.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-info" title="Ver Certificado">🏆</a>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhum treinamento registrado.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card h-100 shadow-sm border-danger" style="border-width: 1px;">
-                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">⚠️ Histórico Disciplinar</h5>
-                    <a href="{% url 'adicionar_advertencia_func' funcionario.id %}" class="btn btn-sm btn-light text-danger fw-bold shadow-sm">+ Advertência</a>
-                </div>
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover mb-0 text-center table-sm align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Data</th>
-                                <th>Motivo</th>
-                                <th>Reinc.?</th>
-                                <th>Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for adv in advertencias %}
-                            <tr>
-                                <td><strong>{{ adv.data_incidente|date:"d/m/y" }}</strong></td>
-                                <td class="text-start ps-3">{{ adv.tipo.titulo }}</td>
-                                <td>
-                                    {% if adv.reincidente %}
-                                        <span class="badge bg-danger">Sim</span>
-                                    {% else %}
-                                        <span class="badge bg-light text-muted border">Não</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <a href="{% url 'imprimir_advertencia' adv.id %}" target="_blank" class="btn btn-sm btn-outline-dark" title="Imprimir Documento">🖨️</a>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhuma ocorrência registrada.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card h-100 shadow-sm border-secondary" style="border-width: 1px;">
-                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">🏥 Histórico de Afastamentos</h5>
-                    <a href="{% url 'adicionar_afastamento_func' funcionario.id %}" class="btn btn-sm btn-light text-dark fw-bold shadow-sm">+ Registrar</a>
-                </div>
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover mb-0 text-center table-sm align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Início</th>
-                                <th>Retorno</th>
-                                <th>Motivo</th>
-                                <th>Laudo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in afastamentos %}
-                            <tr>
-                                <td>{{ item.data_inicio|date:"d/m/y" }}</td>
-                                <td>
-                                    {% if item.data_retorno %}
-                                        {{ item.data_retorno|date:"d/m/y" }}
-                                    {% else %}
-                                        <span class="badge bg-warning text-dark">Em aberto</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-start ps-2">
-                                    <small>{{ item.motivo|truncatechars:20 }}</small>
-                                </td>
-                                <td>
-                                    {% if item.laudo %}
-                                        <a href="{{ item.laudo.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">📎</a>
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhum afastamento.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card h-100 shadow-sm border-dark" style="border-width: 1px;">
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">🚑 Acidentes de Trabalho</h5>
-                    <a href="{% url 'adicionar_acidente_func' funcionario.id %}" class="btn btn-sm btn-light text-dark fw-bold shadow-sm">+ Registrar</a>
-                </div>
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover mb-0 text-center table-sm align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Data/Hora</th>
-                                <th>Local</th>
-                                <th>Motivo</th>
-                                <th>Anexo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for acid in acidentes %}
-                            <tr>
-                                <td>
-                                    <strong>{{ acid.data_acidente|date:"d/m/y" }}</strong><br>
-                                    <small>{{ acid.hora_acidente|time:"H:i" }}</small>
-                                </td>
-                                <td class="text-start">{{ acid.local }}</td>
-                                <td class="text-start">
-                                    <small>{{ acid.descricao_motivo|truncatechars:15 }}</small>
-                                </td>
-                                <td>
-                                    {% if acid.arquivo_evidencia %}
-                                        <a href="{{ acid.arquivo_evidencia.url }}" target="_blank" class="btn btn-sm btn-outline-dark">📷</a>
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted py-4">Nenhum acidente registrado.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
     </div>
 </div>
+
+<div class="modal fade" id="modalEPI" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content border-0 shadow" method="post" action="{% url 'registrar_entrega_epi' funcionario.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title fw-bold"><i class="fas fa-hard-hat me-2"></i>Entregar EPI</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                {{ form_epi.as_p }}
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="submit" class="btn btn-primary w-100">Confirmar Entrega</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalVacina" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content border-0 shadow" method="post" action="{% url 'registrar_vacina' funcionario.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-header bg-success text-white">
+                <h6 class="modal-title fw-bold"><i class="fas fa-syringe me-2"></i>Registrar Vacina</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                {{ form_vacina.as_p }}
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="submit" class="btn btn-success w-100">Salvar Registro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTreinamento" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content border-0 shadow" method="post" action="{% url 'registrar_treinamento' funcionario.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title fw-bold"><i class="fas fa-graduation-cap me-2"></i>Novo Treinamento</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                {{ form_treinamento.as_p }}
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="submit" class="btn btn-primary w-100">Salvar Treinamento</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAdvertencia" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content border-0 shadow" method="post" action="{% url 'registrar_advertencia_modal' funcionario.id %}">
+            {% csrf_token %}
+            <div class="modal-header bg-danger text-white">
+                <h6 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Aplicar Advertência</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                {{ form_advertencia.as_p }}
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="submit" class="btn btn-danger w-100">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAfastamento" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content border-0 shadow" method="post" action="{% url 'registrar_afastamento' funcionario.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-header bg-secondary text-white">
+                <h6 class="modal-title fw-bold"><i class="fas fa-user-injured me-2"></i>Registrar Afastamento</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                {{ form_afastamento.as_p }}
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="submit" class="btn btn-secondary w-100">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAcidente" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content border-0 shadow" method="post" action="{% url 'registrar_acidente' funcionario.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-header bg-dark text-white">
+                <h6 class="modal-title fw-bold"><i class="fas fa-crutch me-2"></i>Acidente de Trabalho</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                {{ form_acidente.as_p }}
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="submit" class="btn btn-dark w-100">Salvar Registro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}

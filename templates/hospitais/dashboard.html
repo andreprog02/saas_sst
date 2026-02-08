@@ -1,55 +1,84 @@
 {% extends 'dashboard.html' %}
+{% load static %}
+
+{% block title %}Hospitais e Clínicas{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid px-4">
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
         <div>
-            <h2>🏥 Rede de Emergência</h2>
-            <p class="text-muted mb-0">Hospitais e Clínicas de referência (PAE).</p>
+            <h1>🏥 Rede Credenciada</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Hospitais</li>
+                </ol>
+            </nav>
         </div>
-        <div>
-            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary me-2">Voltar</a>
-            <a href="{% url 'gerenciar_especialidades' %}" class="btn btn-outline-primary me-2">⚙️ Especialidades</a>
-            <a href="{% url 'criar_hospital' %}" class="btn btn-success fw-bold">+ Novo Hospital</a>
+        <div class="d-flex gap-2">
+            <a href="{% url 'config_hospitais' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-stethoscope"></i> Gerir Especialidades
+            </a>
+            <a href="{% url 'novo_hospital' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Novo Hospital
+            </a>
         </div>
     </div>
 
-    <div class="row">
-        {% for h in hospitais %}
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <h5 class="card-title text-primary fw-bold">{{ h.nome }}</h5>
-                        <a href="{% url 'editar_hospital' h.id %}" class="btn btn-sm btn-light">✏️</a>
-                    </div>
-                    
-                    <p class="mb-2"><strong>📞 Tel:</strong> {{ h.telefone }}</p>
-                    <p class="mb-2 text-muted small">📍 {{ h.endereco }}</p>
-                    <p class="mb-3">🕐 {{ h.horario_atendimento }}</p>
-
-                    <div class="mb-3">
-                        {% for esp in h.especialidades.all %}
-                            <span class="badge bg-info text-dark mb-1">{{ esp.nome }}</span>
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Hospitais e Clínicas Cadastrados</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nome</th>
+                            <th>Telefone</th>
+                            <th>Horário</th>
+                            <th>Endereço</th>
+                            <th>Especialidades</th>
+                            <th class="text-center">Mapa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for hospital in hospitais %}
+                        <tr>
+                            <td class="fw-bold">{{ hospital.nome }}</td>
+                            <td>{{ hospital.telefone }}</td>
+                            <td>{{ hospital.horario_atendimento }}</td>
+                            <td>{{ hospital.endereco|truncatechars:40 }}</td>
+                            <td>
+                                {% for esp in hospital.especialidades.all %}
+                                    <span class="badge bg-info text-dark">{{ esp.nome }}</span>
+                                {% empty %}
+                                    <span class="text-muted">-</span>
+                                {% endfor %}
+                            </td>
+                            <td class="text-center">
+                                {% if hospital.mapa_link %}
+                                    <a href="{{ hospital.mapa_link }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-map-marked-alt"></i> Ver
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
                         {% empty %}
-                            <small class="text-muted">Sem especialidades definidas</small>
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                <i class="fas fa-hospital fa-3x mb-3"></i><br>
+                                Nenhum hospital cadastrado.
+                            </td>
+                        </tr>
                         {% endfor %}
-                    </div>
-                </div>
-                <div class="card-footer bg-white border-0">
-                    {% if h.mapa_link %}
-                        <a href="{{ h.mapa_link }}" target="_blank" class="btn btn-outline-primary btn-sm w-100">🗺️ Ver no Mapa</a>
-                    {% endif %}
-                </div>
+                    </tbody>
+                </table>
             </div>
         </div>
-        {% empty %}
-        <div class="col-12 text-center py-5">
-            <h4 class="text-muted">Nenhum hospital cadastrado.</h4>
-            <a href="{% url 'criar_hospital' %}" class="btn btn-success mt-2">+ Cadastrar Primeiro</a>
-        </div>
-        {% endfor %}
     </div>
 </div>
 {% endblock %}
