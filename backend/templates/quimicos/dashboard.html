@@ -1,0 +1,412 @@
+{% extends 'dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4 font-sans bg-gray-50">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1" style="letter-spacing: -0.5px;">Produtos Químicos</h2>
+            <p class="text-muted mb-0">Gestão de FISPQ, inventário, riscos GHS e exposição ocupacional</p>
+        </div>
+        <button class="btn btn-primary d-flex align-items-center gap-2 fw-semibold px-4 py-2 shadow-sm btn-saas" data-bs-toggle="modal" data-bs-target="#modalNovoProduto">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            Novo Produto
+        </button>
+    </div>
+
+    <ul class="nav nav-tabs border-bottom-0 mb-4" id="quimicoTabs" role="tablist" style="gap: 10px;">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold px-4 py-2 border-0 rounded-pill tab-saas" id="inventario-tab" data-bs-toggle="tab" data-bs-target="#inventario" type="button">
+                <i class="bi bi-box-seam me-2"></i> Inventário
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-4 py-2 border-0 rounded-pill tab-saas" id="mapa-tab" data-bs-toggle="tab" data-bs-target="#mapa" type="button">
+                <i class="bi bi-map me-2"></i> Mapa de Riscos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-4 py-2 border-0 rounded-pill tab-saas" id="exposicao-tab" data-bs-toggle="tab" data-bs-target="#exposicao" type="button">
+                <i class="bi bi-lungs me-2"></i> Exposição (NR-15)
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        
+        <div class="tab-pane fade show active" id="inventario">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-white border-bottom pt-4 pb-4 px-4">
+                    <form method="GET" class="row g-3 align-items-center">
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" name="busca" class="form-control border-start-0 bg-light" placeholder="Buscar por nome, CAS ou código...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select bg-light border-0 text-muted">
+                                <option selected>Filtrar por Setor</option>
+                                </select>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4 py-3 text-uppercase small text-muted fw-bold">Produto</th>
+                                <th class="py-3 text-uppercase small text-muted fw-bold">CAS / Ref</th>
+                                <th class="py-3 text-uppercase small text-muted fw-bold">Classificação GHS</th>
+                                <th class="py-3 text-uppercase small text-muted fw-bold">Localização</th>
+                                <th class="py-3 text-uppercase small text-muted fw-bold">Validade FISPQ</th>
+                                <th class="pe-4 py-3 text-uppercase small text-muted fw-bold text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in produtos %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-bold text-dark fs-6">{{ p.nome }}</span>
+                                        <div class="d-flex align-items-center gap-2 mt-1">
+                                            <span class="badge bg-light text-secondary border fw-normal">{{ p.concentracao }}</span>
+                                            <span class="small text-muted">{{ p.quantidade|floatformat:0 }} {{ p.unidade }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <span class="font-monospace small bg-gray-100 text-dark px-2 py-1 rounded border">{{ p.cas_number }}</span>
+                                </td>
+
+                                <td>
+                                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                                        {% for item in p.ghs_detalhado %}
+                                            <div class="ghs-diamond" data-bs-toggle="tooltip" data-bs-html="true" 
+                                                 title="<strong>{{ item.codigo }}</strong><br>{{ item.descricao }}">
+                                                <div class="ghs-content">
+                                                    {% if item.tipo == 'fogo' %}
+                                                        <svg viewBox="0 0 24 24" fill="black" stroke="none"><path d="M12,22c4.97,0,9-4.03,9-9c0-4.969-9-13-9-13S3,8.031,3,13C3,17.97,7.03,22,12,22z M12,11 c0,0,3,2.5,3,5c0,1.657-1.343,3-3,3s-3-1.343-3-3C9,13.5,12,11,12,11z"/></svg>
+                                                    
+                                                    {% elif item.tipo == 'toxico' %}
+                                                        <svg viewBox="0 0 24 24" fill="black" stroke="none"><path d="M12 2C7 2 4 5 4 8v1.5c0 .8.7 1.5 1.5 1.5h1c.8 0 1.5-.7 1.5-1.5V8c0-1.5 1.5-3 4-3s4 1.5 4 3v1.5c0 .8.7 1.5 1.5 1.5h1c.8 0 1.5-.7 1.5-1.5V8c0-3-3-6-8-6zm-4 12v3h8v-3h-2l-2 2-2-2h-2z M9,13 c0,1.1,0.9,2,2,2s2-0.9,2-2"/></svg>
+                                                    
+                                                    {% elif item.tipo == 'corrosivo' %}
+                                                        <svg viewBox="0 0 24 24" fill="black" stroke="none"><path d="M4,20h16v-2H4V20z M18,4h-3v5h-2V4h-3v5H8V4H5v7c0,1.1,0.9,2,2,2h10c1.1,0,2-0.9,2-2V4z"/></svg>
+                                                    
+                                                    {% elif item.tipo == 'irritante' %}
+                                                        <svg viewBox="0 0 24 24" fill="black" stroke="none"><path d="M11 4h2v11h-2zM11 17h2v2h-2z"/></svg>
+                                                    
+                                                    {% elif item.tipo == 'ambiente' %}
+                                                        <svg viewBox="0 0 24 24" fill="black" stroke="none"><path d="M17,13c-0.6,0-1.1,0.2-1.5,0.5c-0.6-1.4-1.9-2.3-3.5-2.5V7H10v3.8C8.8,10.6,8,9.4,8,8c0-1.1,0.9-2,2-2V4 C7.2,4,5,6.2,5,9c0,2.1,1.2,3.9,3,4.7V15H7v2h1v3h2v-3h2.1c0.4,1.7,2,3,3.9,3c2.2,0,4-1.8,4-4S18.8,12.1,17,13z"/></svg>
+                                                    
+                                                    {% elif item.tipo == 'oxidante' %}
+                                                        <svg viewBox="0 0 24 24" fill="black" stroke="none"><path d="M12,2C9,2,6,4,6,8c0,3,3,5,6,5s6-2,6-5C18,4,15,2,12,2z M12,11c-1.7,0-3-1.3-3-3s1.3-3,3-3s3,1.3,3,3S13.7,11,12,11z M4,19h16v2H4V19z"/></svg>
+
+                                                    {% else %}
+                                                        <svg viewBox="0 0 24 24" fill="black" stroke="none"><path d="M11 4h2v11h-2zM11 17h2v2h-2z"/></svg>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div class="small fw-bold text-dark">{{ p.setor.nome }}</div>
+                                    <div class="small text-muted">{{ p.localizacao }}</div>
+                                </td>
+
+                                <td>
+                                    {% if p.status_fispq == 'valida' %}
+                                        <div class="badge-status bg-success-subtle text-success">
+                                            <i class="bi bi-check-circle-fill"></i> Válida
+                                        </div>
+                                    {% elif p.status_fispq == 'vencida' %}
+                                        <div class="badge-status bg-danger-subtle text-danger">
+                                            <i class="bi bi-x-circle-fill"></i> Vencida
+                                        </div>
+                                    {% else %}
+                                        <div class="badge-status bg-warning-subtle text-warning-emphasis">
+                                            <i class="bi bi-exclamation-triangle-fill"></i> Renovar
+                                        </div>
+                                    {% endif %}
+                                    <div class="small text-muted mt-1 ms-1">{{ p.data_validade_fispq|date:"d/m/Y" }}</div>
+                                </td>
+
+                                <td class="text-end pe-4">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        {% if p.fispq %}
+                                            <a href="{{ p.fispq.url }}" target="_blank" class="btn-action" title="Visualizar" data-bs-toggle="tooltip">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ p.fispq.url }}" download class="btn-action" title="Baixar" data-bs-toggle="tooltip">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                        {% endif %}
+                                        <div class="dropdown">
+                                            <button class="btn-action" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2 rounded-3">
+                                                <li><a class="dropdown-item rounded-2 small py-2" href="{% url 'editar_quimico' p.id %}">✏️ Editar</a></li>
+                                                <li><a class="dropdown-item rounded-2 small py-2 text-danger" href="{% url 'deletar_quimico' p.id %}">🗑️ Excluir</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="text-center py-5 text-muted">Nenhum produto cadastrado.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="mapa">
+            <div class="row g-4">
+                {% for item in setores_risco %}
+                <div class="col-md-4">
+                    <div class="card h-100 rounded-4 border-0 shadow-sm overflow-hidden hover-lift">
+                        <div class="position-absolute top-0 start-0 bottom-0" style="width: 5px; background: {% if item.nivel == 'alto' %}#dc3545{% elif item.nivel == 'medio' %}#ffc107{% else %}#198754{% endif %};"></div>
+                        <div class="card-body ps-4">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="fw-bold mb-0 text-dark">{{ item.nome }}</h5>
+                                <span class="badge rounded-pill fw-normal px-3 py-2 
+                                    {% if item.nivel == 'alto' %}bg-danger bg-opacity-10 text-danger
+                                    {% elif item.nivel == 'medio' %}bg-warning bg-opacity-10 text-dark
+                                    {% else %}bg-success bg-opacity-10 text-success{% endif %}">
+                                    Risco {{ item.nivel|title }}
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-between small mb-2 text-muted">
+                                <span>Produtos Químicos</span>
+                                <span class="fw-bold text-dark">{{ item.produtos }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mb-3 text-muted">
+                                <span>Funcionários</span>
+                                <span class="fw-bold text-dark">{{ item.funcionarios }}</span>
+                            </div>
+                            <hr class="border-light">
+                            <div class="small text-muted mb-2 fw-bold text-uppercase" style="font-size: 0.75rem;">Agentes Identificados</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for risco in item.principais_riscos %}
+                                    <span class="badge bg-light text-secondary border fw-normal">{{ risco }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-5 text-muted">Nenhum mapa de risco gerado.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="exposicao">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-bottom pt-4 px-4">
+                    <h5 class="fw-bold mb-1">Monitoramento de Exposição</h5>
+                    <p class="text-muted small mb-0">Comparativo com limites da NR-15</p>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4 text-muted fw-bold small">Funcionário</th>
+                                <th class="text-muted fw-bold small">Agente</th>
+                                <th class="text-muted fw-bold small">Limite</th>
+                                <th class="text-muted fw-bold small">Medição</th>
+                                <th class="text-end pe-4 text-muted fw-bold small">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exp in exposicoes %}
+                            <tr>
+                                <td class="ps-4 fw-bold text-dark">{{ exp.funcionario.nome }}</td>
+                                <td>{{ exp.produto_quimico.nome }}</td>
+                                <td><code class="bg-light px-2 py-1 rounded border text-muted">{{ exp.limite_tolerancia }}</code></td>
+                                <td style="width: 200px;">
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span class="fw-bold">{{ exp.medicao_atual }}</span>
+                                        <span class="text-muted">{{ exp.percentual_exposicao }}%</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar rounded-pill 
+                                            {% if exp.percentual_exposicao > 100 %}bg-danger
+                                            {% elif exp.percentual_exposicao > 75 %}bg-warning
+                                            {% else %}bg-success{% endif %}" 
+                                            style="width: {{ exp.percentual_exposicao }}%">
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-end pe-4">
+                                    {% if exp.status == 'critico' %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill">Crítico</span>
+                                    {% else %}
+                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill">Seguro</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center py-5 text-muted">Sem dados.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="modalNovoProduto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <div>
+                    <h5 class="modal-title fw-bold">Novo Produto Químico</h5>
+                    <p class="text-muted small mb-0">Preencha os dados do inventário e GHS</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form action="{% url 'novo_quimico' %}" method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="small fw-bold text-muted">Nome</label> {{ form.nome }}</div>
+                        <div class="col-md-6"><label class="small fw-bold text-muted">CAS</label> {{ form.cas_number }}</div>
+                        <div class="col-md-4"><label class="small fw-bold text-muted">Concentração</label> {{ form.concentracao }}</div>
+                        <div class="col-md-4"><label class="small fw-bold text-muted">Qtd</label> {{ form.quantidade }}</div>
+                        <div class="col-md-4"><label class="small fw-bold text-muted">Unidade</label> {{ form.unidade }}</div>
+                        <div class="col-md-6"><label class="small fw-bold text-muted">Setor</label> {{ form.setor }}</div>
+                        <div class="col-md-6"><label class="small fw-bold text-muted">Local</label> {{ form.localizacao }}</div>
+                        <div class="col-12">
+                            <label class="small fw-bold text-muted">Códigos GHS</label> 
+                            {{ form.classificacao_ghs }}
+                            <div class="form-text">Ex: H315, H220 (o sistema gera os ícones automaticamente).</div>
+                        </div>
+                        <div class="col-md-6"><label class="small fw-bold text-muted">Validade FISPQ</label> {{ form.data_validade_fispq }}</div>
+                        <div class="col-md-6"><label class="small fw-bold text-muted">Arquivo</label> {{ form.fispq }}</div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary px-4 btn-saas">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* --- CSS PROFISSIONAL GHS --- */
+    
+    /* Losango Vermelho GHS */
+    .ghs-diamond {
+        width: 32px;
+        height: 32px;
+        border: 2px solid #dc3545; /* Vermelho GHS padrão */
+        background: white;
+        transform: rotate(45deg); /* Gira o quadrado */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px; /* Leve arredondamento */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        cursor: help;
+        transition: transform 0.2s;
+        margin: 4px; /* Espaço para não cortar as pontas */
+    }
+    
+    .ghs-diamond:hover {
+        transform: rotate(45deg) scale(1.1); /* Efeito zoom */
+        z-index: 10;
+    }
+
+    /* Conteúdo dentro do Losango (Desvira o ícone) */
+    .ghs-content {
+        transform: rotate(-45deg); 
+        width: 20px; 
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* SVGs pretos para contraste GHS */
+    .ghs-content svg {
+        width: 100%;
+        height: 100%;
+        fill: black; 
+    }
+
+    /* --- BOTÕES DE AÇÃO SAAS --- */
+    .btn-action {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f1f5f9; /* Cinza gelo */
+        color: #475569; /* Cinza escuro */
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-action:hover {
+        background-color: #0d6efd; /* Azul vibrante */
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(13, 110, 253, 0.2);
+    }
+
+    /* --- OUTROS --- */
+    .btn-saas {
+        background-color: #0f67ff; /* Azul específico */
+        border: none;
+    }
+    .btn-saas:hover {
+        background-color: #0056d6;
+        transform: translateY(-1px);
+    }
+
+    .nav-tabs .nav-link { color: #64748b; }
+    .nav-tabs .nav-link.active { 
+        background-color: #eff6ff !important; /* Fundo azul bem claro */
+        color: #1d4ed8 !important; /* Texto azul forte */
+    }
+    .nav-tabs .nav-link:hover { color: #1d4ed8; }
+
+    .badge-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 99px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border: 1px solid transparent;
+    }
+    
+    .hover-lift { transition: transform 0.2s; }
+    .hover-lift:hover { transform: translateY(-3px); }
+</style>
+
+<script>
+    // Ativa os Tooltips do Bootstrap (para mostrar o nome do risco)
+    document.addEventListener('DOMContentLoaded', function () {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    });
+</script>
+{% endblock %}
