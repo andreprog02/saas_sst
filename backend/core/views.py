@@ -82,7 +82,59 @@ def dashboard(request):
 def lista_funcionarios(request):
     empresa = request.user.perfil.empresa
     funcionarios = Funcionario.objects.filter(empresa=empresa)
-    return render(request, 'funcionarios_lista.html', {'funcionarios': funcionarios})
+
+    # --- 1. Filtros (GET) ---
+    busca = request.GET.get('busca')
+    filtro_status = request.GET.get('status')
+    filtro_setor = request.GET.get('setor')
+    filtro_cargo = request.GET.get('cargo')
+
+    if busca:
+        funcionarios = funcionarios.filter(
+            Q(nome__icontains=busca) | 
+            Q(cpf__icontains=busca) |
+            Q(cargo__icontains=busca)
+        )
+    
+    if filtro_status:
+        funcionarios = funcionarios.filter(situacao=filtro_status)
+    
+    if filtro_setor:
+        funcionarios = funcionarios.filter(setor_id=filtro_setor)
+
+    if filtro_cargo:
+        funcionarios = funcionarios.filter(cargo=filtro_cargo)
+
+    # --- 2. Estatísticas (Correção do erro 111) ---
+    # Calculamos aqui para evitar lógica complexa no template
+    total_colaboradores = funcionarios.count()
+    total_ativos = funcionarios.filter(situacao='ATIVO').count()
+    total_afastados = funcionarios.filter(Q(situacao='AFASTADO') | Q(situacao='FERIAS')).count()
+
+    # --- 3. Dados para os Dropdowns dos Filtros ---
+    setores = Setor.objects.filter(empresa=empresa).order_by('nome')
+    # Pega todos os cargos distintos já cadastrados para montar o select
+    cargos = Funcionario.objects.filter(empresa=empresa).values_list('cargo', flat=True).distinct().order_by('cargo')
+
+    context = {
+        'funcionarios': funcionarios,
+        'total_colaboradores': total_colaboradores,
+        'total_ativos': total_ativos,
+        'total_afastados': total_afastados,
+        
+        # Passando listas para preencher os selects
+        'setores': setores,
+        'cargos': cargos,
+        
+        # Mantendo o estado dos filtros na tela
+        'busca_atual': busca,
+        'status_atual': filtro_status,
+        'setor_atual': filtro_setor and int(filtro_setor), # converte pra int para comparar no template
+        'cargo_atual': filtro_cargo,
+    }
+    
+    return render(request, 'funcionarios_lista.html', context)
+
 
 @login_required
 def novo_funcionario(request):
@@ -1039,3 +1091,19 @@ def novo_nr13(request):
 def lista_advertencias(request):
     return render(request, 'dashboard.html') # Temporário até criar o template real
 
+
+@login_required
+def editar_exame(request, exame_id):
+    empresa = request.user.perfil.empresa
+    exame = get_object_or_404(Exame, pk=exame_id, empresa=empresa)
+    funcionario_id = exame.funcionario.id # Guarda o ID para o redirect
+    
+    if request.method == 'POST':
+        form = ExameForm(request.POST, request.FILES, instance=exame)
+        if form.is_valid():
+            form.save()
+            # Redireciona de volta para a aba de exames do prontuário
+            return redirect('detalhe_funcionario', id=funcionario_id)
+            
+    # Se for GET ou inválido, redireciona para o detalhe (comportamento de modal)
+    return redirect('detalhe_funcionario', id=funcionario_id)

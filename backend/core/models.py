@@ -141,7 +141,7 @@ class Funcionario(models.Model):
     # --- 4. DADOS CONTRATUAIS E PROFISSIONAIS ---
     matricula = models.CharField(max_length=20, null=True, blank=True, verbose_name="Matrícula")
     cargo = models.CharField(max_length=100, verbose_name="Cargo")
-    funcao = models.CharField(max_length=100, verbose_name="Função", null=True, blank=True)
+    funcao = models.ForeignKey(Funcao, on_delete=models.SET_NULL, null=True, blank=True)
     setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True)
     
     turno = models.CharField(max_length=20, choices=OPCOES_TURNO, default='ADM', verbose_name="Turno")
@@ -741,3 +741,95 @@ class EquipamentoNR13(models.Model):
     laudo_tecnico = models.FileField(upload_to='nr13_laudos/', null=True, blank=True, verbose_name="Laudo Técnico (PDF)")
 
     def __str__(self): return f"{self.codigo} - {self.nome}"
+
+
+
+class Risco(models.Model):
+    TIPO_RISCO = [
+        ('FISICO', 'Físico'),
+        ('QUIMICO', 'Químico'),
+        ('BIOLOGICO', 'Biológico'),
+        ('ERGONOMICO', 'Ergonômico'),
+        ('ACIDENTE', 'Acidente'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    tipo = models.CharField(max_length=20, choices=TIPO_RISCO)
+    descricao = models.CharField(max_length=255)
+    codigo_ghs = models.CharField(max_length=20, blank=True, null=True)
+
+    necessita_epi = models.BooleanField(default=False)
+    necessita_treinamento = models.BooleanField(default=False)
+    necessita_exame = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.descricao} ({self.tipo})"
+    
+
+
+class Funcao(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    nome = models.CharField(max_length=120)
+
+    def __str__(self):
+        return self.nome
+
+
+class InventarioRisco(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    setor = models.ForeignKey(Setor, on_delete=models.CASCADE)
+    funcao = models.ForeignKey(Funcao, on_delete=models.CASCADE)
+    risco = models.ForeignKey(Risco, on_delete=models.CASCADE)
+
+    epis_obrigatorios = models.ManyToManyField('EPI', blank=True)
+    treinamentos_obrigatorios = models.ManyToManyField('Treinamento', blank=True)
+    exames_obrigatorios = models.ManyToManyField('Exame', blank=True)
+    epcs_obrigatorios = models.ManyToManyField('EPC', blank=True)
+    placas_obrigatorias = models.ManyToManyField('PlacaSinalizacao', blank=True)
+
+    def __str__(self):
+        return f"{self.setor} - {self.funcao} - {self.risco}"
+    
+
+class InspecaoSeguranca(models.Model):
+    TIPO = [
+        ('PLACA', 'Placa de Sinalização'),
+        ('EPC', 'EPC'),
+        ('ROTA_FUGA', 'Rota de Fuga'),
+        ('PAINEL', 'Painel Elétrico'),
+        ('QUIMICO', 'Armazenamento Químico'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    setor = models.ForeignKey(Setor, on_delete=models.CASCADE)
+    tipo = models.CharField(max_length=20, choices=TIPO)
+
+    descricao = models.TextField()
+    conforme = models.BooleanField(default=True)
+    observacao = models.TextField(blank=True, null=True)
+    data_inspecao = models.DateField(auto_now_add=True)
+
+    foto = models.ImageField(upload_to='inspecoes/', blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.tipo} - {self.setor}"
+class IncidenteSeguranca(models.Model):
+    TIPO = [
+        ('QUASE_ACIDENTE', 'Quase Acidente'),
+        ('ATO_INSEGURO', 'Ato Inseguro'),
+        ('CONDICAO_INSEGURA', 'Condição Insegura'),
+        ('ACIDENTE', 'Acidente'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    setor = models.ForeignKey(Setor, on_delete=models.CASCADE)
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True)
+
+    tipo = models.CharField(max_length=30, choices=TIPO)
+    descricao = models.TextField()
+    causa = models.TextField(blank=True, null=True)
+    plano_acao = models.TextField(blank=True, null=True)
+    data_registro = models.DateField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.tipo} - {self.setor}"

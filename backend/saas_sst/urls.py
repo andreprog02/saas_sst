@@ -149,4 +149,7 @@ urlpatterns = [
     path('nr13/', views.lista_nr13, name='lista_nr13'),
     path('nr13/novo/', views.novo_nr13, name='novo_nr13'),
     # path('nr13/editar/<int:pk>/', views.editar_nr13, name='editar_nr13'), # Futuro
+
+
+    path('exames/editar/<int:exame_id>/', views.editar_exame, name='editar_exame'),
 ]
