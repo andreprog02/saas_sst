@@ -278,32 +278,61 @@ class TreinamentoFuncionario(models.Model):
 # 7. EXTINTORES E EQUIPAMENTOS
 # ==============================================================================
 class Extintor(models.Model):
-    CLASSES = [('A', 'Classe A'), ('BC', 'Classes B/C'), ('ABC', 'Classes A/B/C')]
-    AGENTES = [('AGUA', 'Água'), ('PQS', 'Pó Químico'), ('CO2', 'CO2')]
-    SITUACAO = [('ATIVO', 'Ativo'), ('MANUTENCAO', 'Manutenção')]
+    # Classes de Fogo conforme NBR
+    CLASSES = [
+        ('A', 'Classe A (Sólidos: Papel, Madeira, Tecido)'),
+        ('B', 'Classe B (Líquidos Inflamáveis)'),
+        ('C', 'Classe C (Equipamentos Elétricos)'),
+        ('D', 'Classe D (Metais Combustíveis)'),
+        ('K', 'Classe K (Óleos e Gorduras)'),
+        ('BC', 'Classes B/C (Líquidos e Elétricos)'),
+        ('ABC', 'Classes A/B/C (Universal)'),
+    ]
+
+    # Agentes Extintores
+    AGENTES = [
+        ('AGUA', 'Água Pressurizada (AP)'),
+        ('PQS_BC', 'Pó Químico Seco (BC) - Bicarbonato'),
+        ('PQS_ABC', 'Pó Químico Seco (ABC) - Monofosfato'),
+        ('CO2', 'Gás Carbônico (CO2)'),
+        ('ESPUMA', 'Espuma Mecânica'),
+        ('HALON', 'Agentes Limpos (Halogenados/Fe-36)'),
+        ('METAL', 'Pó Especial (Classe D)'),
+        ('ACETATO', 'Acetato de Potássio (Classe K)'),
+    ]
+
+    SITUACAO = [
+        ('ATIVO', '✅ Ativo / Operante'),
+        ('MANUTENCAO', '🛠️ Em Manutenção'),
+        ('DESCARREGADO', '⚠️ Descarregado / Vazio'),
+        ('VENCIDO', '❌ Vencido')
+    ]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    codigo_patrimonial = models.CharField(max_length=50)
-    numero_serie = models.CharField(max_length=100)
-    classe = models.CharField(max_length=5, choices=CLASSES)
-    agente = models.CharField(max_length=20, choices=AGENTES)
-    capacidade = models.IntegerField()
-    localizacao = models.ForeignKey(Localizacao, on_delete=models.PROTECT)
-    classe_risco = models.CharField(max_length=100)
-    data_ultima_manutencao = models.DateField()
-    data_proxima_manutencao = models.DateField()
-    data_teste_hidrostatico = models.DateField()
+    codigo_patrimonial = models.CharField(max_length=50, verbose_name="Código/Patrimônio")
+    numero_serie = models.CharField(max_length=100, verbose_name="Número de Série")
     
-    # Campo que faltava em alguns forms
-    altura_instalacao = models.DecimalField(max_digits=4, decimal_places=2, default=1.50) 
-    sinalizacao_ok = models.BooleanField(default=True)
-    acesso_livre = models.BooleanField(default=True)
+    classe = models.CharField(max_length=5, choices=CLASSES, verbose_name="Classe de Fogo")
+    agente = models.CharField(max_length=20, choices=AGENTES, verbose_name="Agente Extintor")
+    capacidade = models.IntegerField(verbose_name="Capacidade (kg/L)", help_text="Ex: 6 para 6kg, 10 para 10L")
+    
+    localizacao = models.ForeignKey(Localizacao, on_delete=models.PROTECT, verbose_name="Localização")
+    classe_risco = models.CharField(max_length=100, verbose_name="Risco do Local", blank=True)
+    
+    data_ultima_manutencao = models.DateField(verbose_name="Última Recarga")
+    data_proxima_manutencao = models.DateField(verbose_name="Próxima Recarga")
+    data_teste_hidrostatico = models.DateField(verbose_name="Teste Hidrostático (5 anos)")
+    
+    altura_instalacao = models.DecimalField(max_digits=4, decimal_places=2, default=1.60, verbose_name="Altura (m)")
+    sinalizacao_ok = models.BooleanField(default=True, verbose_name="Sinalização de Parede/Piso OK?")
+    acesso_livre = models.BooleanField(default=True, verbose_name="Acesso Desobstruído?")
     
     situacao = models.CharField(max_length=20, choices=SITUACAO, default='ATIVO')
     qrcode_imagem = models.ImageField(upload_to='qrcodes_extintores/', blank=True, null=True)
 
-    def __str__(self): return self.codigo_patrimonial
+    def __str__(self): return f"{self.codigo_patrimonial} - {self.get_agente_display()}"
 
+    
 class InspecaoExtintor(models.Model):
     extintor = models.ForeignKey(Extintor, on_delete=models.CASCADE, related_name='inspecoes')
     data_inspecao = models.DateField(default=timezone.now)
@@ -500,3 +529,25 @@ class Hospital(models.Model):
     horario_atendimento = models.CharField(max_length=100)
     especialidades = models.ManyToManyField(TipoEspecialidade)
     mapa_link = models.URLField(blank=True, null=True)
+
+
+class Exame(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='exames')
+    tipo = models.CharField(max_length=100, verbose_name="Tipo de Exame", help_text="Ex: Admissional, Audiometria, Hemograma")
+    data_realizacao = models.DateField(verbose_name="Data de Realização")
+    data_vencimento = models.DateField(verbose_name="Vencimento", null=True, blank=True)
+    observacoes = models.TextField(verbose_name="Observações", blank=True)
+    arquivo = models.FileField(upload_to='exames_laudos/', verbose_name="Laudo/Documento", null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.tipo} - {self.funcionario.nome}"
+
+    @property
+    def status(self):
+        from datetime import date
+        if not self.data_vencimento:
+            return 'indefinido'
+        if self.data_vencimento < date.today():
+            return 'vencido'
+        return 'valido'

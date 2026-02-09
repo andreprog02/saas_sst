@@ -2,16 +2,16 @@ from django import forms
 from django.contrib.auth.models import User
 from django.forms import inlineformset_factory
 
-from .models import RiscoOcupacional # Adicione no import lá em cima
-
+# Importação única e completa de todos os modelos
 from .models import (
     Empresa, Funcionario, Setor, NormaRegulamentadora, RiscoOcupacional,
     EPI, TipoEPI, CategoriaEPI, MarcaEPI, TamanhoEPI, Localizacao,
     Vacina, ControleVacina, EntregaEPI, TreinamentoFuncionario,
     Advertencia, TipoAdvertencia, Afastamento, AcidenteTrabalho,
     Extintor, InspecaoExtintor, Equipamento, InspecaoEquipamento,
-    ProdutoQuimico, Hospital, TipoEspecialidade
+    ProdutoQuimico, Hospital, TipoEspecialidade, Exame
 )
+
 
 # --- CADASTRO E LOGIN ---
 
@@ -441,3 +441,15 @@ class RiscoOcupacionalForm(forms.ModelForm):
 
     def __init__(self, empresa_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+class ExameForm(forms.ModelForm):
+    class Meta:
+        model = Exame
+        fields = ['tipo', 'data_realizacao', 'data_vencimento', 'observacoes', 'arquivo']
+        widgets = {
+            'tipo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: ASO Admissional, Audiometria...'}),
+            'data_realizacao': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'data_vencimento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'arquivo': forms.FileInput(attrs={'class': 'form-control'}),
+        }

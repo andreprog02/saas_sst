@@ -101,6 +101,7 @@ urlpatterns = [
 
     # Vacinas (Configuração)
     path('config/vacinas/', gerenciar_vacinas, name='gerenciar_vacinas'),
+    path('config/vacinas/popular/', views.popular_vacinas, name='popular_vacinas'), # <--- NOVA ROTA
 
     # Produtos Químicos
     path('quimicos/', dashboard_quimicos, name='dashboard_quimicos'),
@@ -122,4 +123,14 @@ urlpatterns = [
     path('api/especialidades/nova/', api_criar_especialidade, name='api_criar_especialidade'),
 
     path('api/quimicos/', views.api_lista_quimicos, name='api_lista_quimicos'),
+
+    path('funcionarios/<int:func_id>/exames/novo/', views.registrar_exame, name='registrar_exame'),
+    path('exames/deletar/<int:exame_id>/', views.deletar_exame, name='deletar_exame'),
+    # ----------------------------------
+
+
+    path('configuracoes/setores/', views.lista_setores, name='lista_setores'),
+    path('configuracoes/setores/novo/', views.novo_setor, name='novo_setor'),
+    path('configuracoes/setores/editar/<int:id>/', views.editar_setor, name='editar_setor'),
+    path('configuracoes/setores/deletar/<int:id>/', views.deletar_setor, name='deletar_setor'),
 ]

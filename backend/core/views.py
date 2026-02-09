@@ -19,6 +19,10 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .serializers import ProdutoQuimicoSerializer
+from django.contrib import messages
+
+from .models import Exame  # Adicione Exame à lista de imports
+from .forms import ExameForm  # Adicione ExameForm à lista de imports
 
 # --- IMPORTAÇÃO DOS MODELOS ---
 from .models import (
@@ -112,8 +116,10 @@ def editar_funcionario(request, id):
 def detalhe_funcionario(request, id):
     empresa = request.user.perfil.empresa
     funcionario = get_object_or_404(Funcionario, pk=id, empresa=empresa)
+    exames = funcionario.exames.all().order_by('-data_realizacao') # NOVO: Lista de exames
     
     # Listagens
+
     vacinas = funcionario.vacinas.all().order_by('data_proximo_reforco')
     epis = funcionario.epis_entregues.all().order_by('-data_entrega')
     treinamentos = funcionario.treinamentos.all().order_by('-data_realizacao')
@@ -124,6 +130,7 @@ def detalhe_funcionario(request, id):
     # Formulários para os Modais
     context = {
         'funcionario': funcionario,
+        'exames': exames, # NOVO: Adicionar ao context
         'vacinas': vacinas,
         'epis': epis,
         'treinamentos': treinamentos,
@@ -138,6 +145,7 @@ def detalhe_funcionario(request, id):
         'form_advertencia': AdvertenciaFuncionarioForm(empresa.id),
         'form_afastamento': AfastamentoForm(),
         'form_acidente': AcidenteTrabalhoForm(),
+        'form_exame': ExameForm(), 
     }
     return render(request, 'funcionario_detalhe.html', context)
 
@@ -544,20 +552,55 @@ def historico_equipamento(request, id):
 @login_required
 def gerenciar_vacinas(request):
     empresa = request.user.perfil.empresa
-    vacinas = Vacina.objects.filter(empresa=empresa)
-    form = VacinaForm(request.POST or None)
+    vacinas = Vacina.objects.filter(empresa=empresa).order_by('nome')
+    
     if request.method == 'POST':
-        if 'delete_id' in request.POST:
-            get_object_or_404(Vacina, id=request.POST.get('delete_id'), empresa=empresa).delete()
-            return redirect('gerenciar_vacinas')
+        form = VacinaForm(request.POST)
         if form.is_valid():
-            obj = form.save(commit=False)
-            obj.empresa = empresa
-            obj.save()
+            vacina = form.save(commit=False)
+            vacina.empresa = empresa  # <--- O ERRO ESTAVA AQUI (Faltava vincular a empresa)
+            vacina.save()
+            messages.success(request, 'Vacina cadastrada com sucesso!')
             return redirect('gerenciar_vacinas')
-    return render(request, 'vacinas/gerenciar_vacinas.html', {'vacinas': vacinas, 'form': form})
+        else:
+            messages.error(request, 'Erro ao salvar. Verifique os campos.')
+    else:
+        form = VacinaForm()
+    
+    return render(request, 'vacinas/gerenciar_vacinas.html', {
+        'vacinas': vacinas, 
+        'form': form
+    })
 
-# --- QUIMICOS ---
+@login_required
+def popular_vacinas(request):
+    """Cria automaticamente as vacinas padrão do PCMSO"""
+    empresa = request.user.perfil.empresa
+    
+    # Lista de Vacinas Padrão (Nome, Meses para Reforço, Descrição)
+    lista_padrao = [
+        ('Antitetânica (dT)', 120, 'Reforço a cada 10 anos.'),
+        ('Hepatite B', 0, 'Esquema de 3 doses. Reforço não é rotina.'),
+        ('Tríplice Viral', 0, 'Sarampo, Caxumba e Rubéola. Dose única ou duas doses.'),
+        ('Febre Amarela', 0, 'Dose única (áreas de risco).'),
+        ('Influenza (Gripe)', 12, 'Dose anual (campanha).'),
+        ('COVID-19', 0, 'Conforme calendário do Ministério da Saúde.'),
+    ]
+    
+    contador = 0
+    for nome, meses, desc in lista_padrao:
+        # get_or_create evita duplicidade
+        _, created = Vacina.objects.get_or_create(
+            empresa=empresa,
+            nome=nome,
+            defaults={'meses_reforco': meses, 'descricao': desc}
+        )
+        if created:
+            contador += 1
+            
+    messages.success(request, f'{contador} vacinas padrão foram adicionadas!')
+    return redirect('gerenciar_vacinas')
+
 
 @login_required
 def dashboard_quimicos(request):
@@ -769,3 +812,80 @@ def api_lista_quimicos(request):
         return Response(serializer.data)
     except AttributeError:
         return Response({"erro": "Usuário sem empresa vinculada"}, status=400)
+    
+
+
+@login_required
+def lista_setores(request):
+    empresa = request.user.perfil.empresa
+    setores = Setor.objects.filter(empresa=empresa).order_by('nome')
+    return render(request, 'setores/lista.html', {'setores': setores})
+
+@login_required
+def novo_setor(request):
+    empresa = request.user.perfil.empresa
+    if request.method == 'POST':
+        form = SetorForm(empresa, request.POST)
+        if form.is_valid():
+            setor = form.save(commit=False)
+            setor.empresa = empresa
+            setor.save()
+            # Se houver ManyToMany no form (ex: riscos), salvar aqui:
+            # form.save_m2m() 
+            return redirect('lista_setores')
+    else:
+        form = SetorForm(empresa)
+    return render(request, 'generic_form.html', {'form': form, 'titulo': 'Novo Setor'})
+
+@login_required
+def editar_setor(request, id):
+    empresa = request.user.perfil.empresa
+    setor = get_object_or_404(Setor, pk=id, empresa=empresa)
+    
+    if request.method == 'POST':
+        form = SetorForm(empresa, request.POST, instance=setor)
+        if form.is_valid():
+            form.save()
+            return redirect('lista_setores')
+    else:
+        form = SetorForm(empresa, instance=setor)
+    
+    return render(request, 'generic_form.html', {'form': form, 'titulo': f'Editar: {setor.nome}'})
+
+@login_required
+def deletar_setor(request, id):
+    empresa = request.user.perfil.empresa
+    setor = get_object_or_404(Setor, pk=id, empresa=empresa)
+    
+    if request.method == 'POST':
+        try:
+            setor.delete()
+        except ProtectedError:
+            # Caso o setor tenha funcionários/produtos vinculados
+            # Você pode adicionar uma mensagem de erro aqui se quiser
+            pass
+        return redirect('lista_setores')
+        
+    return render(request, 'confirmar_delete.html', {'objeto': setor})
+
+
+@login_required
+def registrar_exame(request, func_id):
+    empresa = request.user.perfil.empresa
+    funcionario = get_object_or_404(Funcionario, pk=func_id, empresa=empresa)
+    if request.method == 'POST':
+        form = ExameForm(request.POST, request.FILES)
+        if form.is_valid():
+            exame = form.save(commit=False)
+            exame.funcionario = funcionario
+            exame.empresa = empresa
+            exame.save()
+    return redirect('detalhe_funcionario', id=func_id)
+
+@login_required
+def deletar_exame(request, exame_id):
+    empresa = request.user.perfil.empresa
+    exame = get_object_or_404(Exame, pk=exame_id, empresa=empresa)
+    func_id = exame.funcionario.id
+    exame.delete()
+    return redirect('detalhe_funcionario', id=func_id)

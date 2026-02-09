@@ -296,6 +296,8 @@
                     </a>
                     
                     <div class="submenu {% if 'config' in request.path or 'gerenciar' in request.path %}show{% endif %}" id="menuConfig">
+                        <a href="{% url 'lista_setores' %}" class="nav-link {% if 'setores' in request.path %}active{% endif %}">Setores</a>
+                        
                         <a href="{% url 'config_locais' %}" class="nav-link {% if 'locais' in request.path %}active{% endif %}">Locais Físicos</a>
                         <a href="{% url 'config_tipos_epi' %}" class="nav-link {% if 'tipos-epi' in request.path %}active{% endif %}">Categorias EPI</a>
                         <a href="{% url 'gerenciar_vacinas' %}" class="nav-link {% if 'vacinas' in request.path %}active{% endif %}">Vacinas Padrão</a>
