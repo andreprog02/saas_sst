@@ -154,7 +154,7 @@
         }
         
         .submenu.show {
-            max-height: 500px; /* Altura máxima arbitrária para permitir animação */
+            max-height: 800px; /* Aumentei para caber mais itens */
             transition: max-height 0.5s ease-in;
         }
 
@@ -279,13 +279,17 @@
                         <i class="fas fa-chevron-down arrow-icon"></i>
                     </a>
                     
-                    <div class="submenu {% if 'estoque' in request.path or 'quimicos' in request.path or 'hospitais' in request.path or 'extintores' in request.path or 'equipamentos' in request.path or 'advertencias' in request.path %}show{% endif %}" id="menuOperacional">
+                    <div class="submenu {% if 'estoque' in request.path or 'quimicos' in request.path or 'hospitais' in request.path or 'extintores' in request.path or 'equipamentos' in request.path or 'advertencias' in request.path or 'pmoc' in request.path or 'nr13' in request.path %}show{% endif %}" id="menuOperacional">
                         <a href="{% url 'lista_epis' %}" class="nav-link {% if 'estoque' in request.path %}active{% endif %}">Estoque EPIs</a>
+                        <a href="{% url 'lista_extintores' %}" class="nav-link {% if 'extintores' in request.path %}active{% endif %}">Extintores (NR-23)</a>
+                        <a href="{% url 'lista_equipamentos' %}" class="nav-link {% if 'equipamentos' in request.path %}active{% endif %}">Hidrantes/Alarmes</a>
+                        
+                        <a href="{% url 'lista_pmoc' %}" class="nav-link {% if 'pmoc' in request.path %}active{% endif %}">PMOC (Ar Cond.)</a>
+                        <a href="{% url 'lista_nr13' %}" class="nav-link {% if 'nr13' in request.path %}active{% endif %}">NR-13 (Caldeiras)</a>
+                        
                         <a href="{% url 'dashboard_quimicos' %}" class="nav-link {% if 'quimicos' in request.path %}active{% endif %}">Prod. Químicos</a>
                         <a href="{% url 'dashboard_hospitais' %}" class="nav-link {% if 'hospitais' in request.path %}active{% endif %}">Hospitais</a>
-                        <a href="{% url 'lista_extintores' %}" class="nav-link {% if 'extintores' in request.path %}active{% endif %}">Extintores</a>
-                        <a href="{% url 'lista_equipamentos' %}" class="nav-link {% if 'equipamentos' in request.path %}active{% endif %}">Equipamentos</a>
-                        <a href="{% url 'dashboard_advertencias' %}" class="nav-link {% if 'advertencias' in request.path %}active{% endif %}">Ocorrências</a>
+                        <a href="{% url 'lista_advertencias' %}" class="nav-link {% if 'advertencias' in request.path %}active{% endif %}">Ocorrências</a>
                     </div>
                 </div>
 

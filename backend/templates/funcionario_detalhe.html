@@ -543,15 +543,37 @@
                                         <div class="card-body">
                                             <ul class="list-group list-group-flush">
                                                 {% for af in afastamentos %}
-                                                    <li class="list-group-item px-0 border-0 mb-2">
-                                                        <div class="d-flex align-items-center gap-2">
-                                                            <div class="badge bg-secondary">CID</div>
-                                                            <span class="fw-bold text-dark">{{ af.data_inicio|date:"d/m/Y" }}</span>
+                                                    <li class="list-group-item px-0 border-0 mb-3">
+                                                        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                                            <div class="badge bg-secondary" title="Código CID">CID</div>
+                                                            <span class="fw-bold text-dark">
+                                                                {{ af.data_inicio|date:"d/m/Y" }}
+                                                                {% if af.data_retorno %}
+                                                                    <i class="fas fa-long-arrow-alt-right text-muted mx-1 opacity-50"></i>
+                                                                    {{ af.data_retorno|date:"d/m/Y" }}
+                                                                {% else %}
+                                                                    <span class="badge bg-warning text-dark border border-warning ms-2">
+                                                                        <i class="fas fa-clock me-1"></i>Em aberto
+                                                                    </span>
+                                                                {% endif %}
+                                                            </span>
                                                         </div>
-                                                        <div class="small text-muted mt-1 ms-1">{{ af.motivo }}</div>
+                                                        
+                                                        {% if af.data_retorno %}
+                                                        <div class="ms-1 mb-1">
+                                                            <small class="text-primary fw-bold bg-primary bg-opacity-10 px-2 py-1 rounded">
+                                                                <i class="fas fa-hourglass-half me-1"></i>
+                                                                Duração: {{ af.data_inicio|timesince:af.data_retorno }}
+                                                            </small>
+                                                        </div>
+                                                        {% endif %}
+
+                                                        <div class="small text-muted mt-1 ms-1 border-start border-3 ps-2">
+                                                            {{ af.motivo }}
+                                                        </div>
                                                     </li>
                                                 {% empty %}
-                                                    <li class="text-muted small fst-italic text-center py-3">Sem registros.</li>
+                                                    <li class="text-muted small fst-italic text-center py-3">Sem registros de afastamento.</li>
                                                 {% endfor %}
                                             </ul>
                                         </div>

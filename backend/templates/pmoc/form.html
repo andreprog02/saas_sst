@@ -1,0 +1,142 @@
+{% extends 'dashboard.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Editar Ar Condicionado{% else %}Novo Ar Condicionado{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="max-width: 1000px;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'lista_pmoc' %}" class="text-decoration-none text-muted small fw-bold"><i class="fas fa-arrow-left"></i> Voltar</a>
+            <h2 class="fw-bold text-dark mt-1">
+                {% if form.instance.pk %}Editar Equipamento{% else %}Novo Ar Condicionado{% endif %}
+            </h2>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        {% if form.errors %}
+        <div class="alert alert-danger">
+            <ul class="mb-0">{% for field, errors in form.errors.items %}<li><strong>{{ field }}:</strong> {{ errors|striptags }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3"><h6 class="mb-0 fw-bold text-primary"><i class="fas fa-tag me-2"></i>Identificação</h6></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted fw-bold">Código Tag *</label>
+                                {{ form.codigo }}
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label small text-muted fw-bold">Nome / Identificação *</label>
+                                {{ form.nome }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted fw-bold">Tipo</label>
+                                {{ form.tipo }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted fw-bold">Marca</label>
+                                {{ form.marca }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted fw-bold">Modelo</label>
+                                {{ form.modelo }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">Capacidade (BTU)</label>
+                                {{ form.capacidade_btu }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">Gás Refrigerante</label>
+                                {{ form.gas_refrigerante }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3"><h6 class="mb-0 fw-bold text-primary"><i class="fas fa-map-marker-alt me-2"></i>Localização</h6></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">Localização Física</label>
+                                {{ form.localizacao }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">Setor / Área</label>
+                                {{ form.setor }}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small text-muted fw-bold">Responsável Técnico</label>
+                                {{ form.responsavel_tecnico }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white py-3"><h6 class="mb-0 fw-bold text-primary"><i class="fas fa-calendar-alt me-2"></i>Controle de Manutenção</h6></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">Última Manutenção</label>
+                                {{ form.data_ultima_manutencao }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold text-danger">Próxima Manutenção</label>
+                                {{ form.data_proxima_manutencao }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">Última Inspeção</label>
+                                {{ form.data_ultima_inspecao }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">Próxima Inspeção</label>
+                                {{ form.data_proxima_inspecao }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="col-lg-4">
+                
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <label class="form-label small text-muted fw-bold">Situação Atual</label>
+                        {{ form.status }}
+                        
+                        <hr class="my-4">
+                        
+                        <label class="form-label small text-muted fw-bold">Anexar Laudo/PMOC (PDF)</label>
+                        {{ form.laudo_tecnico }}
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <label class="form-label small text-muted fw-bold">Observações Gerais</label>
+                        {{ form.observacoes }}
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary fw-bold py-2"><i class="fas fa-save me-2"></i> Salvar Cadastro</button>
+                    <a href="{% url 'lista_pmoc' %}" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

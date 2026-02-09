@@ -1,42 +1,207 @@
 {% extends 'dashboard.html' %}
-{% block content %}
-<div class="container mt-4">
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h4>{% if form.instance.pk %}Editar{% else %}Cadastrar{% endif %} Extintor</h4>
-        </div>
-        <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
-                <div class="row">
-                    <div class="col-md-4 mb-3">{{ form.codigo_patrimonial.label_tag }} {{ form.codigo_patrimonial }}</div>
-                    <div class="col-md-4 mb-3">{{ form.numero_serie.label_tag }} {{ form.numero_serie }}</div>
-                    <div class="col-md-4 mb-3">{{ form.situacao.label_tag }} {{ form.situacao }}</div>
-                    
-                    <div class="col-md-6 mb-3">{{ form.localizacao.label_tag }} {{ form.localizacao }}</div>
-                    <div class="col-md-6 mb-3">{{ form.classe_risco.label_tag }} {{ form.classe_risco }}</div>
-                    
-                    <div class="col-md-3 mb-3">{{ form.classe.label_tag }} {{ form.classe }}</div>
-                    <div class="col-md-3 mb-3">{{ form.agente.label_tag }} {{ form.agente }}</div>
-                    <div class="col-md-3 mb-3">{{ form.capacidade.label_tag }} {{ form.capacidade }}</div>
-                    <div class="col-md-3 mb-3">{{ form.altura_instalacao.label_tag }} {{ form.altura_instalacao }}</div>
+{% load static %}
 
-                    <h5 class="mt-3 border-bottom">Manutenção</h5>
-                    <div class="col-md-4 mb-3">{{ form.data_ultima_manutencao.label_tag }} {{ form.data_ultima_manutencao }}</div>
-                    <div class="col-md-4 mb-3">{{ form.data_proxima_manutencao.label_tag }} {{ form.data_proxima_manutencao }}</div>
-                    <div class="col-md-4 mb-3">{{ form.data_teste_hidrostatico.label_tag }} {{ form.data_teste_hidrostatico }}</div>
-                    
-                    <div class="col-md-6 mb-3">{{ form.empresa_mantenedora.label_tag }} {{ form.empresa_mantenedora }}</div>
-                    <div class="col-md-6 mb-3">{{ form.numero_lacre.label_tag }} {{ form.numero_lacre }}</div>
+{% block title %}
+    {% if form.instance.pk %}Editar Extintor{% else %}Novo Extintor{% endif %}
+{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-color: #0f172a;
+        --accent-color: #ef4444; /* Vermelho */
+        --success-color: #22c55e;
+        --border-color: #e2e8f0;
+        --bg-surface: #ffffff;
+    }
+
+    .wizard-container {
+        max-width: 900px;
+        margin: 2rem auto;
+        background: var(--bg-surface);
+        border-radius: 24px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--border-color);
+        display: flex; flex-direction: column; min-height: 600px; overflow: hidden;
+    }
+
+    /* Stepper */
+    .stepper-header { background: #f8fafc; padding: 2rem 3rem; border-bottom: 1px solid var(--border-color); }
+    .steps-indicator { display: flex; justify-content: center; gap: 40px; }
+    .step-item {
+        display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+        border-radius: 12px; color: #64748b; font-weight: 600; font-size: 0.9rem;
+        transition: all 0.3s ease; cursor: default;
+    }
+    .step-item.active { background: #fef2f2; color: var(--accent-color); box-shadow: 0 2px 4px rgba(239, 68, 68, 0.1); }
+    .step-item.completed { color: var(--success-color); }
+
+    /* Conteúdo */
+    .wizard-body { padding: 2.5rem 3rem; flex-grow: 1; }
+    .step-content { display: none; animation: fadeIn 0.4s ease; }
+    .step-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Footer */
+    .wizard-footer { padding: 1.5rem 3rem; border-top: 1px solid var(--border-color); background: #f8fafc; display: flex; justify-content: space-between; }
+    .btn-custom { padding: 10px 24px; border-radius: 8px; font-weight: 600; border: none; transition: 0.2s; }
+    .btn-prev { background: white; border: 1px solid var(--border-color); color: #64748b; }
+    .btn-next { background: var(--primary-color); color: white; }
+    .btn-submit { background: var(--accent-color); color: white; }
+    .hidden { display: none !important; }
+    
+    .form-label { font-weight: 600; font-size: 0.85rem; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; }
+</style>
+
+<div class="container-fluid">
+    <div class="mb-3 mx-auto" style="max-width: 900px;">
+        <a href="{% url 'lista_extintores' %}" class="text-decoration-none text-muted small fw-bold">
+            <i class="fas fa-arrow-left me-1"></i> Voltar para lista
+        </a>
+    </div>
+
+    <div class="wizard-container">
+        
+        <div class="stepper-header">
+            <div class="steps-indicator">
+                <div class="step-item active" id="stepIndicator1"><i class="fas fa-fire"></i> Identificação</div>
+                <div class="step-item" id="stepIndicator2"><i class="fas fa-map-marker-alt"></i> Localização</div>
+                <div class="step-item" id="stepIndicator3"><i class="fas fa-calendar-alt"></i> Manutenção</div>
+            </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" id="wizardForm" class="d-flex flex-column flex-grow-1">
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div class="alert alert-danger m-4 rounded-3 border-0">
+                <h6 class="alert-heading fw-bold mb-2"><i class="fas fa-exclamation-circle me-2"></i>Erros:</h6>
+                <ul class="mb-0 small">
+                    {% for field, errors in form.errors.items %}
+                        <li><strong>{{ field|title }}:</strong> {{ errors|striptags }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="wizard-body">
+                
+                <div class="step-content active" id="step1">
+                    <h4 class="mb-4 fw-bold text-dark">Dados do Cilindro</h4>
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label">Código *</label>{{ form.codigo_patrimonial }}</div>
+                        <div class="col-md-4"><label class="form-label">Nº Série *</label>{{ form.numero_serie }}</div>
+                        <div class="col-md-4"><label class="form-label">Capacidade (kg) *</label>{{ form.capacidade }}</div>
+
+                        <div class="col-md-6"><label class="form-label">Agente Extintor *</label>{{ form.agente }}</div>
+                        <div class="col-md-6"><label class="form-label">Classe de Fogo *</label>{{ form.classe }}</div>
+                        
+                        <div class="col-md-6"><label class="form-label">Fabricante</label>{{ form.fabricante }}</div>
+                        <div class="col-md-6"><label class="form-label">Data Fabricação</label>{{ form.data_fabricacao }}</div>
+                    </div>
                 </div>
 
-                <button type="submit" class="btn btn-success w-100 mt-3">Salvar Extintor</button>
-            </form>
-        </div>
+                <div class="step-content" id="step2">
+                    <h4 class="mb-4 fw-bold text-dark">Instalação e Local</h4>
+                    <div class="row g-3">
+                        <div class="col-md-12"><label class="form-label">Empresa *</label>{{ form.empresa }}</div>
+                        <div class="col-md-6"><label class="form-label">Localização (FK) *</label>{{ form.localizacao }}</div>
+                        <div class="col-md-6"><label class="form-label">Classe de Risco</label>{{ form.classe_risco }}</div>
+                        
+                        <div class="col-md-4"><label class="form-label">Andar</label>{{ form.andar }}</div>
+                        <div class="col-md-4"><label class="form-label">Setor</label>{{ form.setor }}</div>
+                        <div class="col-md-4"><label class="form-label">Altura (m)</label>{{ form.altura_instalacao }}</div>
+
+                        <div class="col-md-6 pt-4">
+                            <div class="form-check form-switch">
+                                {{ form.sinalizacao_ok }} <label class="form-check-label ms-2">Sinalização OK?</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 pt-4">
+                            <div class="form-check form-switch">
+                                {{ form.acesso_livre }} <label class="form-check-label ms-2">Acesso Livre?</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-content" id="step3">
+                    <h4 class="mb-4 fw-bold text-dark">Validade e Datas</h4>
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">Data Instalação</label>{{ form.data_instalacao }}</div>
+                        <div class="col-md-6"><label class="form-label">Teste Hidrostático *</label>{{ form.data_teste_hidrostatico }}</div>
+
+                        <div class="col-md-4"><label class="form-label text-primary">Última Recarga *</label>{{ form.data_ultima_manutencao }}</div>
+                        <div class="col-md-4"><label class="form-label text-danger fw-bold">Próxima Recarga *</label>{{ form.data_proxima_manutencao }}</div>
+                        <div class="col-md-4"><label class="form-label">Última Inspeção Visual</label>{{ form.data_ultima_inspecao }}</div>
+
+                        <div class="col-12"><label class="form-label">Observações</label>{{ form.observacoes }}</div>
+
+                        <hr class="my-3 opacity-25">
+                        <div class="col-md-6"><label class="form-label fw-bold">Situação</label>{{ form.situacao }}</div>
+                        <div class="col-md-6"><label class="form-label">QR Code</label>{{ form.qrcode_imagem }}</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="wizard-footer">
+                <button type="button" class="btn-custom btn-prev hidden" id="btnPrev" onclick="changeStep(-1)">Anterior</button>
+                <div class="ms-auto">
+                    <button type="button" class="btn-custom btn-next" id="btnNext" onclick="changeStep(1)">Próximo</button>
+                    <button type="submit" class="btn-custom btn-submit hidden" id="btnSubmit">Salvar Extintor</button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
+
 <script>
-    document.querySelectorAll('input, select').forEach(e => e.classList.add('form-control'));
-    document.querySelectorAll('input[type="checkbox"]').forEach(e => e.classList.remove('form-control'));
+    let currentStep = 1; const totalSteps = 3;
+    function changeStep(dir) {
+        if(dir===1 && !validateStep(currentStep)) return;
+        const next = currentStep + dir;
+        if(next<1 || next>totalSteps) return;
+        
+        document.getElementById(`step${currentStep}`).classList.remove('active');
+        document.getElementById(`step${next}`).classList.add('active');
+        updateInd(next); updateBtns(next);
+        currentStep = next;
+    }
+    
+    function updateInd(step) {
+        for(let i=1; i<=totalSteps; i++){
+            const el=document.getElementById(`stepIndicator${i}`);
+            el.classList.remove('active','completed');
+            if(i<step) el.classList.add('completed'); else if(i===step) el.classList.add('active');
+        }
+    }
+    
+    function updateBtns(step) {
+        const p=document.getElementById('btnPrev'), n=document.getElementById('btnNext'), s=document.getElementById('btnSubmit');
+        p.classList.toggle('hidden', step===1);
+        n.classList.toggle('hidden', step===totalSteps);
+        s.classList.toggle('hidden', step!==totalSteps);
+    }
+    
+    function validateStep(step) {
+        const ins = document.getElementById(`step${step}`).querySelectorAll('input[required], select[required]');
+        let ok=true;
+        ins.forEach(i=>{ if(!i.value.trim()){i.classList.add('is-invalid');ok=false;}else i.classList.remove('is-invalid'); });
+        if(!ok) alert("Preencha os obrigatórios (*)");
+        return ok;
+    }
+
+    // Auto Data
+    const ult=document.getElementById('id_data_ultima_manutencao');
+    const prox=document.getElementById('id_data_proxima_manutencao');
+    if(ult && prox){
+        ult.addEventListener('change', function(){
+            if(this.value && !prox.value){
+                let d=new Date(this.value); d.setFullYear(d.getFullYear()+1);
+                prox.value=d.toISOString().split('T')[0];
+            }
+        });
+    }
 </script>
 {% endblock %}

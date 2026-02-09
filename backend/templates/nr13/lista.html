@@ -1,0 +1,170 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold">NR-13 - Vasos de Pressão e Caldeiras</h2>
+        <a href="{% url 'novo_nr13' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Novo Equipamento
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 p-3 rounded text-primary me-3">
+                        <i class="fas fa-industry fa-2x"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ stats.total }}</h3>
+                        <small class="text-muted">Total Cadastrado</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <div class="bg-success bg-opacity-10 p-3 rounded text-success me-3">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ stats.ativos }}</h3>
+                        <small class="text-muted">Operacionais</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <div class="bg-warning bg-opacity-10 p-3 rounded text-warning me-3">
+                        <i class="fas fa-tools fa-2x"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ stats.manutencao }}</h3>
+                        <small class="text-muted">Em Manutenção</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <div class="bg-danger bg-opacity-10 p-3 rounded text-danger me-3">
+                        <i class="fas fa-ban fa-2x"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ stats.inativos }}</h3>
+                        <small class="text-muted">Interditados/Inativos</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <form method="GET" class="row g-2 mb-4 align-items-end">
+                <div class="col-md-4">
+                    <label class="small text-muted fw-bold">Buscar</label>
+                    <input type="text" name="busca" class="form-control" placeholder="Tag, Nome ou Nº Série..." value="{{ request.GET.busca }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted fw-bold">Status</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="todos" {% if request.GET.status == 'todos' %}selected{% endif %}>Todos</option>
+                        <option value="ativo" {% if request.GET.status == 'ativo' %}selected{% endif %}>Ativo</option>
+                        <option value="manutencao" {% if request.GET.status == 'manutencao' %}selected{% endif %}>Em Manutenção</option>
+                        <option value="inativo" {% if request.GET.status == 'inativo' %}selected{% endif %}>Inativo</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-secondary w-100" title="Filtrar">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="col-md-1">
+                    <a href="{% url 'lista_nr13' %}" class="btn btn-outline-danger w-100" title="Limpar Filtros">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-3">Tag/Código</th>
+                            <th>Equipamento</th>
+                            <th>Tipo</th>
+                            <th>Nº Série</th>
+                            <th>Localização</th>
+                            <th>Próx. Inspeção</th>
+                            <th>Status</th>
+                            <th class="text-end pe-3">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in itens %}
+                        <tr>
+                            <td class="ps-3 fw-bold text-primary">{{ item.codigo }}</td>
+                            <td>
+                                {{ item.nome }}
+                                {% if item.fabricante %}
+                                    <br><small class="text-muted">{{ item.fabricante }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary bg-opacity-10 text-dark border">
+                                    {{ item.get_tipo_display }}
+                                </span>
+                            </td>
+                            <td>{{ item.numero_serie|default:"-" }}</td>
+                            <td>{{ item.localizacao|default:"-" }}</td>
+                            <td>
+                                {% if item.data_proxima_inspecao %}
+                                    <span class="{% if item.data_proxima_inspecao < today %}text-danger fw-bold{% endif %}">
+                                        {{ item.data_proxima_inspecao|date:"d/m/Y" }}
+                                    </span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.status == 'ativo' %}
+                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">Operante</span>
+                                {% elif item.status == 'manutencao' %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3">Manutenção</span>
+                                {% else %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                <div class="btn-group">
+                                    {% if item.laudo_tecnico %}
+                                        <a href="{{ item.laudo_tecnico.url }}" target="_blank" class="btn btn-sm btn-light border text-danger" title="Baixar Laudo PDF">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </a>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-light border text-primary" title="Editar (Em breve)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="fas fa-search fa-3x mb-3 opacity-25"></i>
+                                <p class="mb-0">Nenhum equipamento encontrado com os filtros atuais.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

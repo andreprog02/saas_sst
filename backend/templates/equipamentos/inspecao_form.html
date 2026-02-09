@@ -1,100 +1,153 @@
 {% extends 'dashboard.html' %}
+{% load static %}
+
+{% block title %}Nova Inspeção - {{ equipamento.nome }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4" style="max-width: 600px;">
+<style>
+    :root {
+        --primary-color: #0f172a;
+        --accent-color: #f59e0b; /* Âmbar para equipamentos */
+        --bg-surface: #ffffff;
+        --border-color: #e2e8f0;
+    }
+
+    .form-container { max-width: 900px; margin: 2rem auto; }
+
+    /* Cards */
+    .section-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Header do Equipamento */
+    .equipamento-header {
+        background: #fffbeb; /* Fundo ambar claro */
+        border: 1px solid #fcd34d;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    .equipamento-icon {
+        width: 60px; height: 60px;
+        background: #f59e0b; color: white;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.8rem;
+    }
+
+    /* Inputs */
+    .form-label { font-weight: 600; font-size: 0.85rem; color: #64748b; margin-bottom: 0.4rem; }
+    .form-control, .form-select {
+        border-radius: 8px; border: 1px solid var(--border-color); padding: 10px 12px;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); outline: none;
+    }
+
+    /* Botões */
+    .btn-save {
+        background-color: var(--primary-color); color: white;
+        padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; width: 100%;
+        transition: all 0.2s;
+    }
+    .btn-save:hover { background-color: #1e293b; transform: translateY(-1px); }
     
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0">Nova Inspeção</h4>
-        <a href="{% url 'dashboard_equipamentos' %}" class="btn btn-sm btn-outline-secondary">Voltar</a>
+    .btn-cancel {
+        text-decoration: none; color: #64748b; font-weight: 600; font-size: 0.9rem;
+    }
+    .btn-cancel:hover { color: var(--primary-color); }
+</style>
+
+<div class="container-fluid form-container">
+    
+    <div class="mb-4">
+        <a href="{% url 'lista_equipamentos' %}" class="text-decoration-none text-muted small fw-bold">
+            <i class="fas fa-arrow-left me-1"></i> Voltar para lista
+        </a>
     </div>
 
-    <div class="card border-success shadow-sm">
-        <div class="card-header bg-success text-white">
-            <strong>Equipamento:</strong> {{ equipamento.nome }}
+    <div class="equipamento-header">
+        <div class="equipamento-icon">
+            <i class="fas fa-search-plus"></i>
         </div>
-        <div class="card-body">
-            
-            <form method="post" enctype="multipart/form-data">
-                {% csrf_token %}
-                
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Data da Inspeção</label>
-                        {{ form.data_inspecao }}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Responsável</label>
-                        {{ form.responsavel }}
-                    </div>
-                </div>
-
-                <div class="bg-light p-3 rounded mb-3 border">
-                    <h6 class="mb-3 text-success border-bottom pb-2">Checklist de Conformidade</h6>
-                    
-                    <div class="form-check form-switch mb-2">
-                        {{ form.item_integro }}
-                        <label class="form-check-label">O item está íntegro (sem danos)?</label>
-                    </div>
-                    
-                    <div class="form-check form-switch mb-2">
-                        {{ form.acesso_livre }}
-                        <label class="form-check-label">O acesso está livre e desobstruído?</label>
-                    </div>
-                    
-                    <div class="form-check form-switch mb-2">
-                        {{ form.sinalizacao_ok }}
-                        <label class="form-check-label">A sinalização está visível e correta?</label>
-                    </div>
-                    
-                    <div class="form-check form-switch mb-2">
-                        {{ form.teste_funcional }}
-                        <label class="form-check-label">Teste funcional realizado com sucesso?</label>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Observações / Pendências</label>
-                    {{ form.observacoes }}
-                </div>
-
-                <div class="mb-4 p-3 border border-secondary rounded bg-white" style="border-style: dashed !important;">
-                    <label class="form-label fw-bold text-primary">📎 Evidências e Laudos</label>
-                    
-                    {{ form.arquivos }}
-                    
-                    <div class="alert alert-info mt-2 mb-0 py-2" style="font-size: 0.85rem;">
-                        <strong>Dica:</strong> Para enviar várias fotos ou PDFs de uma vez:
-                        <br>
-                        • No Computador: Segure a tecla <strong>CTRL</strong> e clique nos arquivos.
-                        <br>
-                        • No Celular: Pressione e segure para selecionar múltiplos.
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-success w-100 py-2 fw-bold" style="font-size: 1.1rem;">
-                    💾 Salvar e Finalizar
-                </button>
-            </form>
+        <div>
+            <h4 class="fw-bold text-dark mb-1">{{ equipamento.nome }}</h4>
+            <div class="text-muted small">
+                <i class="fas fa-tag me-1"></i> {{ equipamento.codigo }} 
+                <span class="mx-2">|</span> 
+                <i class="fas fa-map-marker-alt me-1"></i> {{ equipamento.localizacao }} - {{ equipamento.pavimento|default:"-" }}
+            </div>
+        </div>
+        <div class="ms-auto">
+            <span class="badge bg-white text-dark border px-3 py-2">
+                Última: {{ equipamento.data_ultima_manutencao|date:"d/m/Y"|default:"Nunca" }}
+            </span>
         </div>
     </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="section-card h-100">
+                    <h5 class="fw-bold mb-4 text-dark"><i class="fas fa-clipboard-check me-2 text-warning"></i>Dados da Inspeção</h5>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Data da Inspeção</label>
+                            <input type="date" name="data_inspecao" class="form-control" value="{% now 'Y-m-d' %}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Responsável</label>
+                            <input type="text" name="responsavel" class="form-control" value="{{ request.user.get_full_name|default:request.user.username }}" required>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">Parecer Técnico / Observações</label>
+                            <textarea name="observacoes" class="form-control" rows="5" placeholder="Descreva as condições do equipamento..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="section-card h-100 bg-light border-0">
+                    <h5 class="fw-bold mb-4 text-dark">Conclusão</h5>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Status Final</label>
+                        <select name="status" class="form-select bg-white">
+                            <option value="OK">✅ Aprovado</option>
+                            <option value="ALERTA">⚠️ Com Restrições</option>
+                            <option value="CRITICO">❌ Reprovado (Bloquear)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Foto/Evidência</label>
+                        <input type="file" name="arquivo" class="form-control bg-white">
+                    </div>
+
+                    <hr class="text-muted opacity-25 my-4">
+
+                    <button type="submit" class="btn-save shadow-sm">
+                        <i class="fas fa-check me-2"></i> Registrar Inspeção
+                    </button>
+                    
+                    <div class="text-center mt-3">
+                        <a href="{% url 'lista_equipamentos' %}" class="btn-cancel">Cancelar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
 </div>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // Estiliza inputs de texto, data, select e textarea
-        document.querySelectorAll('input[type="text"], input[type="date"], select, textarea').forEach(e => {
-            e.classList.add('form-control');
-        });
-
-        // Estiliza o campo de arquivo
-        document.querySelectorAll('input[type="file"]').forEach(e => {
-            e.classList.add('form-control');
-        });
-
-        // Estiliza os checkboxes (switches)
-        document.querySelectorAll('input[type="checkbox"]').forEach(e => {
-            e.classList.add('form-check-input');
-        });
-    });
-</script>
 {% endblock %}

@@ -91,6 +91,8 @@ class Setor(models.Model):
         return self.nome
 
 class Funcionario(models.Model):
+    # --- OPÇÕES DE SELECT (CHOICES) ---
+    
     SITUACAO_CHOICES = [
         ('ATIVO', '✅ Em Exercício'),
         ('FERIAS', '🏖️ Férias'),
@@ -100,31 +102,70 @@ class Funcionario(models.Model):
         ('DESLIGADO', '❌ Desligado'),
     ]
 
+    OPCOES_TURNO = [
+        ('TURNO_1', '1º Turno (06h - 14h)'),
+        ('TURNO_2', '2º Turno (14h - 22h)'),
+        ('TURNO_3', '3º Turno (22h - 06h)'),
+        ('ADM', 'Administrativo (08h - 18h)'),
+    ]
+
+    TIPO_SANGUINEO_CHOICES = [
+        ('A+', 'A+'), ('A-', 'A-'),
+        ('B+', 'B+'), ('B-', 'B-'),
+        ('AB+', 'AB+'), ('AB-', 'AB-'),
+        ('O+', 'O+'), ('O-', 'O-'),
+    ]
+
+    # --- VÍNCULO PRINCIPAL ---
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+
+    # --- 1. IDENTIFICAÇÃO CIVIL ---
     nome = models.CharField(max_length=100)
     cpf = models.CharField(max_length=14)
-    
-    # Contato e Documentos
     rg = models.CharField(max_length=20, null=True, blank=True, verbose_name="RG")
-    matricula = models.CharField(max_length=20, null=True, blank=True, verbose_name="Matrícula")
+    data_nascimento = models.DateField(null=True, blank=True)
+    
+    # --- 2. CONTATO ---
     telefone = models.CharField(max_length=20, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
-    
-    data_nascimento = models.DateField(null=True, blank=True)
-    cargo = models.CharField(max_length=100)
+
+    # --- 3. ENDEREÇO RESIDENCIAL ---
+    cep = models.CharField(max_length=9, null=True, blank=True, verbose_name="CEP")
+    endereco = models.CharField(max_length=255, null=True, blank=True, verbose_name="Logradouro")
+    numero = models.CharField(max_length=20, null=True, blank=True, verbose_name="Número")
+    complemento = models.CharField(max_length=100, null=True, blank=True)
+    bairro = models.CharField(max_length=100, null=True, blank=True)
+    cidade = models.CharField(max_length=100, null=True, blank=True)
+    estado = models.CharField(max_length=2, null=True, blank=True, verbose_name="UF")
+
+    # --- 4. DADOS CONTRATUAIS E PROFISSIONAIS ---
+    matricula = models.CharField(max_length=20, null=True, blank=True, verbose_name="Matrícula")
+    cargo = models.CharField(max_length=100, verbose_name="Cargo")
+    funcao = models.CharField(max_length=100, verbose_name="Função", null=True, blank=True)
     setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True)
-    data_admissao = models.DateField()
-    foto = models.ImageField(upload_to='funcionarios/', null=True, blank=True)
     
-    # Status
+    turno = models.CharField(max_length=20, choices=OPCOES_TURNO, default='ADM', verbose_name="Turno")
+    supervisor = models.CharField(max_length=100, verbose_name="Supervisor", null=True, blank=True)
+    data_admissao = models.DateField(verbose_name="Data de Admissão")
+
+    # --- 5. SAÚDE E SEGURANÇA (NOVO) ---
+    tipo_sanguineo = models.CharField(max_length=5, choices=TIPO_SANGUINEO_CHOICES, null=True, blank=True, verbose_name="Tipo Sanguíneo")
+    alergias = models.TextField(null=True, blank=True, verbose_name="Alergias Conhecidas")
+    medicamentos = models.TextField(null=True, blank=True, verbose_name="Medicamentos em Uso")
+    observacoes_saude = models.TextField(null=True, blank=True, verbose_name="Observações de Saúde")
+
+    # --- 6. MÍDIA E STATUS ---
+    foto = models.ImageField(upload_to='funcionarios/', null=True, blank=True)
     situacao = models.CharField(max_length=20, choices=SITUACAO_CHOICES, default='ATIVO')
     motivo_afastamento = models.CharField(max_length=255, null=True, blank=True)
     ativo = models.BooleanField(default=True)
 
-    def __str__(self): return self.nome
+    def __str__(self):
+        return self.nome
         
     @property
     def cor_status(self):
+        """Retorna a cor do badge para o template (Bootstrap classes)"""
         if self.situacao == 'ATIVO': return 'success'
         if self.situacao == 'FERIAS': return 'info'
         if self.situacao == 'AFASTADO': return 'warning'
@@ -132,7 +173,6 @@ class Funcionario(models.Model):
         if self.situacao == 'SUSPENSO': return 'danger'
         if self.situacao == 'DESLIGADO': return 'dark'
         return 'secondary'
-
 # ==============================================================================
 # 4. ESTOQUE DE EPIs
 # ==============================================================================
@@ -278,7 +318,7 @@ class TreinamentoFuncionario(models.Model):
 # 7. EXTINTORES E EQUIPAMENTOS
 # ==============================================================================
 class Extintor(models.Model):
-    # Classes de Fogo conforme NBR
+    # --- SUAS OPÇÕES ORIGINAIS (MANTIDAS) ---
     CLASSES = [
         ('A', 'Classe A (Sólidos: Papel, Madeira, Tecido)'),
         ('B', 'Classe B (Líquidos Inflamáveis)'),
@@ -289,7 +329,6 @@ class Extintor(models.Model):
         ('ABC', 'Classes A/B/C (Universal)'),
     ]
 
-    # Agentes Extintores
     AGENTES = [
         ('AGUA', 'Água Pressurizada (AP)'),
         ('PQS_BC', 'Pó Químico Seco (BC) - Bicarbonato'),
@@ -309,29 +348,47 @@ class Extintor(models.Model):
     ]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    
+    # --- IDENTIFICAÇÃO ---
     codigo_patrimonial = models.CharField(max_length=50, verbose_name="Código/Patrimônio")
     numero_serie = models.CharField(max_length=100, verbose_name="Número de Série")
     
+    # Seus campos técnicos originais
     classe = models.CharField(max_length=5, choices=CLASSES, verbose_name="Classe de Fogo")
     agente = models.CharField(max_length=20, choices=AGENTES, verbose_name="Agente Extintor")
-    capacidade = models.IntegerField(verbose_name="Capacidade (kg/L)", help_text="Ex: 6 para 6kg, 10 para 10L")
+    capacidade = models.IntegerField(verbose_name="Capacidade (kg/L)", help_text="Ex: 6 para 6kg")
     
+    # === NOVOS CAMPOS (Que estavam faltando e causando erro) ===
+    fabricante = models.CharField(max_length=150, verbose_name="Fabricante", null=True, blank=True)
+    data_fabricacao = models.DateField(verbose_name="Data de Fabricação", null=True, blank=True)
+
+    # --- LOCALIZAÇÃO ---
     localizacao = models.ForeignKey(Localizacao, on_delete=models.PROTECT, verbose_name="Localização")
     classe_risco = models.CharField(max_length=100, verbose_name="Risco do Local", blank=True)
     
+    # === NOVOS CAMPOS DE LOCALIZAÇÃO ===
+    andar = models.CharField(max_length=50, verbose_name="Andar/Pavimento", null=True, blank=True)
+    setor = models.CharField(max_length=100, verbose_name="Setor Específico", null=True, blank=True)
+    
+    altura_instalacao = models.DecimalField(max_digits=4, decimal_places=2, default=1.60, verbose_name="Altura (m)")
+    sinalizacao_ok = models.BooleanField(default=True, verbose_name="Sinalização OK?")
+    acesso_livre = models.BooleanField(default=True, verbose_name="Acesso Livre?")
+
+    # --- MANUTENÇÃO E DATAS ---
     data_ultima_manutencao = models.DateField(verbose_name="Última Recarga")
     data_proxima_manutencao = models.DateField(verbose_name="Próxima Recarga")
     data_teste_hidrostatico = models.DateField(verbose_name="Teste Hidrostático (5 anos)")
     
-    altura_instalacao = models.DecimalField(max_digits=4, decimal_places=2, default=1.60, verbose_name="Altura (m)")
-    sinalizacao_ok = models.BooleanField(default=True, verbose_name="Sinalização de Parede/Piso OK?")
-    acesso_livre = models.BooleanField(default=True, verbose_name="Acesso Desobstruído?")
-    
+    # === NOVOS CAMPOS DE MANUTENÇÃO ===
+    data_instalacao = models.DateField(verbose_name="Data de Instalação", null=True, blank=True)
+    data_ultima_inspecao = models.DateField(verbose_name="Última Inspeção Visual", null=True, blank=True)
+    observacoes = models.TextField(verbose_name="Observações", blank=True)
+
+    # --- STATUS ---
     situacao = models.CharField(max_length=20, choices=SITUACAO, default='ATIVO')
     qrcode_imagem = models.ImageField(upload_to='qrcodes_extintores/', blank=True, null=True)
 
     def __str__(self): return f"{self.codigo_patrimonial} - {self.get_agente_display()}"
-
     
 class InspecaoExtintor(models.Model):
     extintor = models.ForeignKey(Extintor, on_delete=models.CASCADE, related_name='inspecoes')
@@ -350,14 +407,53 @@ class FotoInspecao(models.Model):
     imagem = models.ImageField(upload_to='inspecoes_extintores/')
 
 class Equipamento(models.Model):
-    TIPOS = [('HIDRANTE', 'Hidrante'), ('ALARME', 'Alarme'), ('LUZ', 'Luz Emergência')]
-    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    tipo = models.CharField(max_length=20, choices=TIPOS)
-    nome = models.CharField(max_length=100)
-    localizacao = models.ForeignKey(Localizacao, on_delete=models.PROTECT)
-    data_validade = models.DateField(null=True, blank=True)
-    qrcode_data = models.CharField(max_length=255, blank=True, null=True)
+    # Opções baseadas no arquivo React enviado
+    TIPOS = [
+        ('HIDRANTE', 'Hidrante'),
+        ('MANGUEIRA', 'Mangueira de Incêndio'),
+        ('SPRINKLER', 'Sprinkler'),
+        ('ALARME', 'Alarme de Incêndio'),
+        ('DETECTOR', 'Detector de Fumaça'),
+        ('ILUMINACAO', 'Iluminação de Emergência'),
+        ('PORTA', 'Porta Corta-Fogo'),
+        ('BOMBA', 'Bomba de Incêndio'),
+        ('CENTRAL', 'Central de Alarme'),
+        ('OUTRO', 'Outro'),
+    ]
 
+    SITUACAO = [
+        ('OPERANTE', '✅ Operante'),
+        ('MANUTENCAO', '🛠️ Em Manutenção'),
+        ('DEFEITO', '⚠️ Com Defeito'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    
+    # --- 1. Identificação ---
+    codigo = models.CharField(max_length=50, verbose_name="Código", help_text="Ex: HID-001")
+    nome = models.CharField(max_length=100, verbose_name="Nome/Identificação", help_text="Ex: Hidrante Bloco A")
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='HIDRANTE')
+    fabricante = models.CharField(max_length=150, null=True, blank=True)
+    capacidade = models.CharField(max_length=100, null=True, blank=True, verbose_name="Capacidade/Especificação", help_text="Ex: 2.5 pol, 30m")
+    
+    # --- 2. Localização ---
+    # Mantemos a FK para Localização (Setor), mas adicionamos o campo texto "pavimento" do React
+    localizacao = models.ForeignKey(Localizacao, on_delete=models.PROTECT, verbose_name="Localização (Setor)") 
+    pavimento = models.CharField(max_length=50, null=True, blank=True, verbose_name="Pavimento/Andar", help_text="Ex: Térreo")
+    
+    # --- 3. Manutenção e Datas ---
+    data_instalacao = models.DateField(null=True, blank=True, verbose_name="Data de Instalação")
+    data_ultima_manutencao = models.DateField(null=True, blank=True, verbose_name="Última Manutenção")
+    data_proxima_manutencao = models.DateField(null=True, blank=True, verbose_name="Próxima Manutenção")
+    
+    observacoes = models.TextField(blank=True, verbose_name="Observações")
+    situacao = models.CharField(max_length=20, choices=SITUACAO, default='OPERANTE')
+    imagem = models.ImageField(upload_to='equipamentos_incendio/', null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.codigo} - {self.nome}"
+    
+    
 class InspecaoEquipamento(models.Model):
     equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE, related_name='inspecoes')
     data_inspecao = models.DateField(default=timezone.now)
@@ -551,3 +647,97 @@ class Exame(models.Model):
         if self.data_vencimento < date.today():
             return 'vencido'
         return 'valido'
+    
+
+# --- PMOC: AR CONDICIONADO ---
+class ArCondicionado(models.Model):
+    TIPOS = [
+        ('split', 'Split'),
+        ('janela', 'Janela'),
+        ('cassete', 'Cassete'),
+        ('piso_teto', 'Piso Teto'),
+        ('multi_split', 'Multi Split'),
+        ('central', 'Central'),
+        ('fan_coil', 'Fan Coil'),
+        ('outro', 'Outro'),
+    ]
+    
+    STATUS = [
+        ('ativo', '✅ Ativo'),
+        ('manutencao', '🛠️ Em Manutenção'),
+        ('inativo', '❌ Inativo'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    nome = models.CharField(max_length=100, verbose_name="Nome/Identificação")
+    codigo = models.CharField(max_length=50, verbose_name="Código Tag")
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='split')
+    
+    marca = models.CharField(max_length=100, null=True, blank=True)
+    modelo = models.CharField(max_length=100, null=True, blank=True)
+    capacidade_btu = models.CharField(max_length=50, null=True, blank=True, verbose_name="Capacidade (BTU)")
+    gas_refrigerante = models.CharField(max_length=50, null=True, blank=True, verbose_name="Gás Refrigerante")
+    
+    localizacao = models.CharField(max_length=150, null=True, blank=True)
+    setor = models.CharField(max_length=100, null=True, blank=True)
+    responsavel_tecnico = models.CharField(max_length=100, null=True, blank=True)
+    
+    # Datas de Controle
+    data_ultima_manutencao = models.DateField(null=True, blank=True)
+    data_proxima_manutencao = models.DateField(null=True, blank=True)
+    data_ultima_inspecao = models.DateField(null=True, blank=True)
+    data_proxima_inspecao = models.DateField(null=True, blank=True)
+    
+    status = models.CharField(max_length=20, choices=STATUS, default='ativo')
+    observacoes = models.TextField(null=True, blank=True)
+    laudo_tecnico = models.FileField(upload_to='pmoc_laudos/', null=True, blank=True, verbose_name="Laudo/PMOC (PDF)")
+
+    def __str__(self): return f"{self.codigo} - {self.nome}"
+
+
+# --- NR-13: MÁQUINAS E EQUIPAMENTOS ---
+class EquipamentoNR13(models.Model):
+    TIPOS = [
+        ('caldeira', 'Caldeira'),
+        ('vaso_pressao', 'Vaso de Pressão'),
+        ('tubulacao', 'Tubulação'),
+        ('tanque_metalico', 'Tanque Metálico'),
+        ('compressor', 'Compressor'),
+        ('autoclave', 'Autoclave'),
+        ('outro', 'Outro'),
+    ]
+    
+    STATUS = [
+        ('ativo', '✅ Ativo'),
+        ('manutencao', '🛠️ Em Manutenção'),
+        ('inativo', '❌ Inativo'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    nome = models.CharField(max_length=100, verbose_name="Nome/Identificação")
+    codigo = models.CharField(max_length=50, verbose_name="Código Tag")
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='caldeira')
+    
+    fabricante = models.CharField(max_length=100, null=True, blank=True)
+    numero_serie = models.CharField(max_length=100, null=True, blank=True)
+    ano_fabricacao = models.IntegerField(null=True, blank=True)
+    
+    # Especificações Técnicas
+    pressao_trabalho = models.CharField(max_length=50, null=True, blank=True, verbose_name="Pressão Trabalho")
+    temperatura_trabalho = models.CharField(max_length=50, null=True, blank=True, verbose_name="Temp. Trabalho")
+    capacidade = models.CharField(max_length=50, null=True, blank=True, verbose_name="Capacidade/Volume")
+    
+    localizacao = models.CharField(max_length=150, null=True, blank=True)
+    setor = models.CharField(max_length=100, null=True, blank=True)
+    
+    # Datas de Controle
+    data_ultima_manutencao = models.DateField(null=True, blank=True)
+    data_proxima_manutencao = models.DateField(null=True, blank=True)
+    data_ultima_inspecao = models.DateField(null=True, blank=True)
+    data_proxima_inspecao = models.DateField(null=True, blank=True)
+    
+    status = models.CharField(max_length=20, choices=STATUS, default='ativo')
+    observacoes = models.TextField(null=True, blank=True)
+    laudo_tecnico = models.FileField(upload_to='nr13_laudos/', null=True, blank=True, verbose_name="Laudo Técnico (PDF)")
+
+    def __str__(self): return f"{self.codigo} - {self.nome}"

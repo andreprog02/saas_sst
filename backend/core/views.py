@@ -24,6 +24,9 @@ from django.contrib import messages
 from .models import Exame  # Adicione Exame à lista de imports
 from .forms import ExameForm  # Adicione ExameForm à lista de imports
 
+from .models import ArCondicionado, EquipamentoNR13
+from .forms import ArCondicionadoForm, EquipamentoNR13Form
+
 # --- IMPORTAÇÃO DOS MODELOS ---
 from .models import (
     Empresa, Funcionario, Setor, NormaRegulamentadora,
@@ -439,9 +442,72 @@ def documento_advertencia(request, adv_id):
 
 @login_required
 def lista_extintores(request):
-    empresa = request.user.perfil.empresa
-    extintores = Extintor.objects.filter(empresa=empresa)
-    return render(request, 'extintores/dashboard.html', {'extintores': extintores})
+    # 1. Base Query (Pega todos os extintores da empresa do usuário)
+    # Importante: Começamos com "all()" para depois ir filtrando
+    extintores = Extintor.objects.filter(empresa=request.user.perfil.empresa)
+
+    # 2. Captura os parâmetros da URL (GET)
+    filtro_status = request.GET.get('status')
+    filtro_agente = request.GET.get('agente')
+    termo_busca = request.GET.get('busca')
+
+    # 3. Aplica os Filtros (Se existirem e não forem "TODOS")
+    
+    # Filtro de Status (Situação)
+    if filtro_status and filtro_status != 'TODOS':
+        extintores = extintores.filter(situacao=filtro_status)
+    
+    # Filtro de Agente (Tipo)
+    if filtro_agente and filtro_agente != 'TODOS':
+        extintores = extintores.filter(agente=filtro_agente)
+
+    # Filtro de Busca (Texto livre)
+    if termo_busca:
+        extintores = extintores.filter(
+            Q(codigo_patrimonial__icontains=termo_busca) |
+            Q(numero_serie__icontains=termo_busca) |
+            Q(localizacao__nome__icontains=termo_busca)
+        )
+
+    # 4. Estatísticas para os Cards (Calculadas SEMPRE sobre o total da empresa, não sobre o filtro atual)
+    # Isso garante que os cards mostrem o panorama geral, mesmo se você filtrar a tabela.
+    
+    hoje = date.today()
+    daqui_30_dias = hoje + timedelta(days=30)
+    
+    # Query separada para stats para não ser afetada pelos filtros da tabela
+    todos_extintores = Extintor.objects.filter(empresa=request.user.perfil.empresa)
+    
+    stats = {
+        'total': todos_extintores.count(),
+        
+        # A Vencer: Próxima recarga entre Hoje e Hoje+30 dias E status Ativo
+        'a_vencer': todos_extintores.filter(
+            data_proxima_manutencao__range=[hoje, daqui_30_dias],
+            situacao='ATIVO'
+        ).count(),
+        
+        # Vencidos: Status VENCIDO OU Data menor que hoje
+        'vencidos': todos_extintores.filter(
+            Q(situacao='VENCIDO') | Q(data_proxima_manutencao__lt=hoje)
+        ).count(),
+        
+        # Em Manutenção
+        'manutencao': todos_extintores.filter(situacao='MANUTENCAO').count()
+    }
+
+    # 5. Contexto para o Template
+    context = {
+        'extintores': extintores,      # Lista filtrada para a tabela
+        'stats': stats,                # Números para os cards
+        
+        # Passamos os filtros de volta para manter o <select> selecionado na tela
+        'filtro_status': filtro_status,
+        'filtro_agente': filtro_agente,
+        'busca_atual': termo_busca
+    }
+    
+    return render(request, 'extintores/extintores_lista.html', context)
 
 @login_required
 def novo_extintor(request):
@@ -889,3 +955,87 @@ def deletar_exame(request, exame_id):
     func_id = exame.funcionario.id
     exame.delete()
     return redirect('detalhe_funcionario', id=func_id)
+
+
+
+# --- PMOC (AR CONDICIONADO) ---
+@login_required
+def lista_pmoc(request):
+    base_qs = ArCondicionado.objects.filter(empresa=request.user.perfil.empresa)
+    
+    # Filtros
+    busca = request.GET.get('busca')
+    status = request.GET.get('status')
+    
+    itens = base_qs
+    if busca:
+        itens = itens.filter(Q(nome__icontains=busca) | Q(codigo__icontains=busca))
+    if status and status != 'todos':
+        itens = itens.filter(status=status)
+        
+    # Stats
+    stats = {
+        'total': base_qs.count(),
+        'ativos': base_qs.filter(status='ativo').count(),
+        'manutencao': base_qs.filter(status='manutencao').count(),
+        'inativos': base_qs.filter(status='inativo').count(),
+    }
+    
+    return render(request, 'pmoc/lista.html', {'itens': itens, 'stats': stats})
+
+@login_required
+def novo_pmoc(request):
+    if request.method == 'POST':
+        form = ArCondicionadoForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.empresa = request.user.perfil.empresa
+            obj.save()
+            return redirect('lista_pmoc')
+    else:
+        form = ArCondicionadoForm()
+    return render(request, 'pmoc/form.html', {'form': form})
+
+# --- NR-13 (CALDEIRAS) ---
+@login_required
+def lista_nr13(request):
+    base_qs = EquipamentoNR13.objects.filter(empresa=request.user.perfil.empresa)
+    
+    busca = request.GET.get('busca')
+    status = request.GET.get('status')
+    
+    itens = base_qs
+    if busca:
+        itens = itens.filter(Q(nome__icontains=busca) | Q(codigo__icontains=busca))
+    if status and status != 'todos':
+        itens = itens.filter(status=status)
+        
+    stats = {
+        'total': base_qs.count(),
+        'ativos': base_qs.filter(status='ativo').count(),
+        'manutencao': base_qs.filter(status='manutencao').count(),
+        'inativos': base_qs.filter(status='inativo').count(),
+    }
+    
+    return render(request, 'nr13/lista.html', {'itens': itens, 'stats': stats})
+
+@login_required
+def novo_nr13(request):
+    if request.method == 'POST':
+        form = EquipamentoNR13Form(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.empresa = request.user.perfil.empresa
+            obj.save()
+            return redirect('lista_nr13')
+    else:
+        form = EquipamentoNR13Form()
+    return render(request, 'nr13/form.html', {'form': form})
+
+
+# Adicione ao final do backend/core/views.py se elas não existirem:
+
+@login_required
+def lista_advertencias(request):
+    return render(request, 'dashboard.html') # Temporário até criar o template real
+

@@ -1,0 +1,99 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold">PMOC - Ar Condicionado</h2>
+        <a href="{% url 'novo_pmoc' %}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Novo</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 p-3 rounded text-primary me-3"><i class="fas fa-wind fa-2x"></i></div>
+                    <div><h3 class="mb-0">{{ stats.total }}</h3><small class="text-muted">Total</small></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <div class="bg-success bg-opacity-10 p-3 rounded text-success me-3"><i class="fas fa-check-circle fa-2x"></i></div>
+                    <div><h3 class="mb-0">{{ stats.ativos }}</h3><small class="text-muted">Ativos</small></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <div class="bg-warning bg-opacity-10 p-3 rounded text-warning me-3"><i class="fas fa-tools fa-2x"></i></div>
+                    <div><h3 class="mb-0">{{ stats.manutencao }}</h3><small class="text-muted">Em Manutenção</small></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <form method="GET" class="row g-2 mb-4 align-items-end">
+                <div class="col-md-4">
+                    <label class="small text-muted fw-bold">Buscar</label>
+                    <input type="text" name="busca" class="form-control" placeholder="Código ou Nome..." value="{{ request.GET.busca }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted fw-bold">Status</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="todos">Todos</option>
+                        <option value="ativo">Ativo</option>
+                        <option value="manutencao">Em Manutenção</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-secondary w-100"><i class="fas fa-search"></i></button>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Código</th>
+                            <th>Nome</th>
+                            <th>Tipo</th>
+                            <th>BTU</th>
+                            <th>Local</th>
+                            <th>Próx. Manut.</th>
+                            <th>Status</th>
+                            <th>Laudo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in itens %}
+                        <tr>
+                            <td class="fw-bold">{{ item.codigo }}</td>
+                            <td>{{ item.nome }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ item.get_tipo_display }}</span></td>
+                            <td>{{ item.capacidade_btu }}</td>
+                            <td>{{ item.localizacao }}</td>
+                            <td>{{ item.data_proxima_manutencao|date:"d/m/Y"|default:"-" }}</td>
+                            <td>
+                                {% if item.status == 'ativo' %}<span class="badge bg-success">Ativo</span>
+                                {% elif item.status == 'manutencao' %}<span class="badge bg-warning text-dark">Manutenção</span>
+                                {% else %}<span class="badge bg-danger">Inativo</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if item.laudo_tecnico %}
+                                <a href="{{ item.laudo_tecnico.url }}" target="_blank" class="btn btn-sm btn-light border"><i class="fas fa-file-pdf text-danger"></i></a>
+                                {% else %}-{% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="8" class="text-center py-4 text-muted">Nenhum registro encontrado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

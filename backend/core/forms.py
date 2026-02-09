@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.forms import inlineformset_factory
+from .models import ArCondicionado, EquipamentoNR13
 
 # Importação única e completa de todos os modelos
 from .models import (
@@ -54,29 +55,62 @@ class FuncionarioForm(forms.ModelForm):
         fields = [
             'foto',
             'nome', 'cpf', 'rg', 'matricula',           
-            'data_nascimento', 'email', 'telefone',     
-            'cargo', 'setor', 'data_admissao',          
-            'situacao'                                  
+            'data_nascimento', 'email', 'telefone',
+            'cep', 'endereco', 'numero', 'complemento',
+            'bairro', 'cidade', 'estado',
+            'empresa', 'matricula', 'cargo', 'funcao', 
+            'setor', 'turno', 'data_admissao', 'supervisor',
+            # --- NOVOS CAMPOS DE SAÚDE ---
+            'tipo_sanguineo', 'alergias', 'medicamentos', 'observacoes_saude',
+            # -----------------------------
+            'situacao', 'motivo_afastamento'                                  
         ]
         widgets = {
-            'data_nascimento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'data_admissao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'nome': forms.TextInput(attrs={'class': 'form-control'}),
-            'cpf': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '000.000.000-00'}),
+            # ... (Widgets anteriores de Pessoal e Endereço mantidos) ...
+            'nome': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nome completo'}),
+            'cpf': forms.TextInput(attrs={'class': 'form-control', 'data-mask': '000.000.000-00'}),
             'rg': forms.TextInput(attrs={'class': 'form-control'}),
-            'matricula': forms.TextInput(attrs={'class': 'form-control'}),
+            'data_nascimento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
-            'telefone': forms.TextInput(attrs={'class': 'form-control'}),
+            'telefone': forms.TextInput(attrs={'class': 'form-control', 'id': 'telefone'}),
+
+            'cep': forms.TextInput(attrs={'class': 'form-control', 'id': 'cep', 'data-mask': '00000-000'}),
+            'endereco': forms.TextInput(attrs={'class': 'form-control', 'id': 'logradouro'}),
+            'numero': forms.TextInput(attrs={'class': 'form-control', 'id': 'numero'}),
+            'complemento': forms.TextInput(attrs={'class': 'form-control', 'id': 'complemento'}),
+            'bairro': forms.TextInput(attrs={'class': 'form-control', 'id': 'bairro'}),
+            'cidade': forms.TextInput(attrs={'class': 'form-control', 'id': 'cidade'}),
+            'estado': forms.TextInput(attrs={'class': 'form-control', 'id': 'uf'}),
+
+            # Profissional
+            'empresa': forms.Select(attrs={'class': 'form-select'}),
+            'matricula': forms.TextInput(attrs={'class': 'form-control'}),
             'cargo': forms.TextInput(attrs={'class': 'form-control'}),
+            'funcao': forms.TextInput(attrs={'class': 'form-control'}),
             'setor': forms.Select(attrs={'class': 'form-select'}),
+            'turno': forms.Select(attrs={'class': 'form-select'}),
+            'supervisor': forms.TextInput(attrs={'class': 'form-control'}),
+            'data_admissao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            
+            # --- SAÚDE (Widgets) ---
+            'tipo_sanguineo': forms.Select(attrs={'class': 'form-select'}),
+            'alergias': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Liste alergias a medicamentos ou alimentos...'}),
+            'medicamentos': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Uso contínuo...'}),
+            'observacoes_saude': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            
+            # Status
             'situacao': forms.Select(attrs={'class': 'form-select'}),
+            'motivo_afastamento': forms.TextInput(attrs={'class': 'form-control'}),
+            'foto': forms.FileInput(attrs={'class': 'd-none', 'id': 'inputFoto'}),
         }
 
     def __init__(self, empresa_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if empresa_id:
             self.fields['setor'].queryset = Setor.objects.filter(empresa_id=empresa_id)
-
+            self.fields['empresa'].queryset = Empresa.objects.filter(id=empresa_id)
+            self.fields['empresa'].initial = empresa_id
+            
 # --- SETORES ---
 
 class SetorForm(forms.ModelForm):
@@ -267,28 +301,91 @@ class AdvertenciaForm(forms.ModelForm):
 
 # --- EXTINTORES E EQUIPAMENTOS ---
 
+from django import forms
+from .models import Extintor, Localizacao, Empresa
+
 class ExtintorForm(forms.ModelForm):
     class Meta:
         model = Extintor
-        # Corrigido: usa 'codigo_patrimonial', 'data_teste_hidrostatico' etc
         fields = [
-            'codigo_patrimonial', 'numero_serie', 'classe', 'agente', 'capacidade', 
-            'localizacao', 'classe_risco', 'altura_instalacao',
-            'data_teste_hidrostatico', 'data_proxima_manutencao', 'data_ultima_manutencao'
+            # Identificação
+            'codigo_patrimonial', 'numero_serie', 'classe', 'agente', 'capacidade',
+            'fabricante', 'data_fabricacao',
+            # Localização
+            'empresa', 'localizacao', 'classe_risco', 'andar', 'setor', 'altura_instalacao',
+            'sinalizacao_ok', 'acesso_livre',
+            # Manutenção
+            'data_instalacao', 'data_ultima_manutencao', 'data_proxima_manutencao', 
+            'data_teste_hidrostatico', 'data_ultima_inspecao', 'observacoes',
+            # Status
+            'situacao', 'qrcode_imagem'
         ]
         widgets = {
-            'data_teste_hidrostatico': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'data_proxima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'data_ultima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            
-            'codigo_patrimonial': forms.TextInput(attrs={'class': 'form-control'}),
-            'numero_serie': forms.TextInput(attrs={'class': 'form-control'}),
-            'classe_risco': forms.TextInput(attrs={'class': 'form-control'}),
-            'altura_instalacao': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            # Identificação
+            'codigo_patrimonial': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: EXT-001'}),
+            'numero_serie': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nº do Cilindro'}),
             'classe': forms.Select(attrs={'class': 'form-select'}),
             'agente': forms.Select(attrs={'class': 'form-select'}),
+            'capacidade': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 6'}),
+            'fabricante': forms.TextInput(attrs={'class': 'form-control'}),
+            'data_fabricacao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+
+            # Localização
+            'empresa': forms.Select(attrs={'class': 'form-select'}),
+            'localizacao': forms.Select(attrs={'class': 'form-select'}),
+            'classe_risco': forms.TextInput(attrs={'class': 'form-control'}),
+            'andar': forms.TextInput(attrs={'class': 'form-control'}),
+            'setor': forms.TextInput(attrs={'class': 'form-control'}),
+            'altura_instalacao': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            
+            'sinalizacao_ok': forms.CheckboxInput(attrs={'class': 'form-check-input', 'role': 'switch'}),
+            'acesso_livre': forms.CheckboxInput(attrs={'class': 'form-check-input', 'role': 'switch'}),
+
+            # Manutenção
+            'data_instalacao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_ultima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_proxima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_teste_hidrostatico': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_ultima_inspecao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'situacao': forms.Select(attrs={'class': 'form-select'}),
+            'qrcode_imagem': forms.FileInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            self.fields['localizacao'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+            self.fields['empresa'].queryset = Empresa.objects.filter(id=empresa_id)
+            self.fields['empresa'].initial = empresa_id
+
+# --- EQUIPAMENTOS GERAIS (Hidrantes, Alarmes...) ---
+class EquipamentoForm(forms.ModelForm):
+    class Meta:
+        model = Equipamento
+        fields = [
+            'codigo', 'nome', 'tipo', 'fabricante', 'capacidade',
+            'localizacao', 'pavimento',
+            'data_instalacao', 'data_ultima_manutencao', 'data_proxima_manutencao',
+            'observacoes', 'situacao', 'imagem'
+        ]
+        widgets = {
+            'codigo': forms.TextInput(attrs={'class': 'form-control'}),
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'fabricante': forms.TextInput(attrs={'class': 'form-control'}),
             'capacidade': forms.TextInput(attrs={'class': 'form-control'}),
             'localizacao': forms.Select(attrs={'class': 'form-select'}),
+            'pavimento': forms.TextInput(attrs={'class': 'form-control'}),
+            
+            'data_instalacao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_ultima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_proxima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'situacao': forms.Select(attrs={'class': 'form-select'}),
+            'imagem': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, empresa_id, *args, **kwargs):
@@ -313,15 +410,35 @@ class InspecaoExtintorForm(forms.ModelForm):
 class EquipamentoForm(forms.ModelForm):
     class Meta:
         model = Equipamento
-        fields = ['nome', 'tipo', 'localizacao', 'data_validade', 'qrcode_data']
+        fields = [
+            'codigo', 'nome', 'tipo', 'fabricante', 'capacidade',
+            'localizacao', 'pavimento',
+            'data_instalacao', 'data_ultima_manutencao', 'data_proxima_manutencao',
+            'observacoes', 'situacao', 'imagem'
+        ]
         widgets = {
-            'data_validade': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            # Identificação
+            'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: HID-001'}),
+            'nome': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Hidrante Principal'}),
             'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'fabricante': forms.TextInput(attrs={'class': 'form-control'}),
+            'capacidade': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 2000L, 30m...'}),
+            
+            # Localização
             'localizacao': forms.Select(attrs={'class': 'form-select'}),
-            'qrcode_data': forms.TextInput(attrs={'class': 'form-control'}),
+            'pavimento': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 1º Andar'}),
+            
+            # Datas
+            'data_instalacao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_ultima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_proxima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            
+            # Geral
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'situacao': forms.Select(attrs={'class': 'form-select'}),
+            'imagem': forms.FileInput(attrs={'class': 'form-control'}),
         }
-    
+
     def __init__(self, empresa_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if empresa_id:
@@ -452,4 +569,61 @@ class ExameForm(forms.ModelForm):
             'data_vencimento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'arquivo': forms.FileInput(attrs={'class': 'form-control'}),
+        }
+
+
+class ArCondicionadoForm(forms.ModelForm):
+    class Meta:
+        model = ArCondicionado
+        fields = '__all__'
+        exclude = ['empresa'] # A empresa será vinculada na View
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'codigo': forms.TextInput(attrs={'class': 'form-control'}),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'marca': forms.TextInput(attrs={'class': 'form-control'}),
+            'modelo': forms.TextInput(attrs={'class': 'form-control'}),
+            'capacidade_btu': forms.TextInput(attrs={'class': 'form-control'}),
+            'gas_refrigerante': forms.TextInput(attrs={'class': 'form-control'}),
+            'localizacao': forms.TextInput(attrs={'class': 'form-control'}),
+            'setor': forms.TextInput(attrs={'class': 'form-control'}),
+            'responsavel_tecnico': forms.TextInput(attrs={'class': 'form-control'}),
+            
+            'data_ultima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_proxima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_ultima_inspecao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_proxima_inspecao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'laudo_tecnico': forms.FileInput(attrs={'class': 'form-control'}),
+        }
+
+class EquipamentoNR13Form(forms.ModelForm):
+    class Meta:
+        model = EquipamentoNR13
+        fields = '__all__'
+        exclude = ['empresa']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'codigo': forms.TextInput(attrs={'class': 'form-control'}),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'fabricante': forms.TextInput(attrs={'class': 'form-control'}),
+            'numero_serie': forms.TextInput(attrs={'class': 'form-control'}),
+            'ano_fabricacao': forms.NumberInput(attrs={'class': 'form-control'}),
+            
+            'pressao_trabalho': forms.TextInput(attrs={'class': 'form-control'}),
+            'temperatura_trabalho': forms.TextInput(attrs={'class': 'form-control'}),
+            'capacidade': forms.TextInput(attrs={'class': 'form-control'}),
+            'localizacao': forms.TextInput(attrs={'class': 'form-control'}),
+            'setor': forms.TextInput(attrs={'class': 'form-control'}),
+            
+            'data_ultima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_proxima_manutencao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_ultima_inspecao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_proxima_inspecao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'laudo_tecnico': forms.FileInput(attrs={'class': 'form-control'}),
         }

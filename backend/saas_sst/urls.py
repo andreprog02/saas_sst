@@ -133,4 +133,20 @@ urlpatterns = [
     path('configuracoes/setores/novo/', views.novo_setor, name='novo_setor'),
     path('configuracoes/setores/editar/<int:id>/', views.editar_setor, name='editar_setor'),
     path('configuracoes/setores/deletar/<int:id>/', views.deletar_setor, name='deletar_setor'),
+
+    # ADVERTÊNCIAS
+    path('advertencias/', views.lista_advertencias, name='lista_advertencias'),
+    # path('advertencias/nova/', views.nova_advertencia, name='nova_advertencia'),
+
+
+
+    # --- MÓDULO: PMOC (Ar Condicionado) - NOVO ---
+    path('pmoc/', views.lista_pmoc, name='lista_pmoc'),
+    path('pmoc/novo/', views.novo_pmoc, name='novo_pmoc'),
+    # path('pmoc/editar/<int:pk>/', views.editar_pmoc, name='editar_pmoc'), # Futuro
+
+    # --- MÓDULO: NR-13 (Caldeiras e Vasos) - NOVO ---
+    path('nr13/', views.lista_nr13, name='lista_nr13'),
+    path('nr13/novo/', views.novo_nr13, name='novo_nr13'),
+    # path('nr13/editar/<int:pk>/', views.editar_nr13, name='editar_nr13'), # Futuro
 ]
