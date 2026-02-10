@@ -150,6 +150,21 @@ urlpatterns = [
     path('nr13/novo/', views.novo_nr13, name='novo_nr13'),
     # path('nr13/editar/<int:pk>/', views.editar_nr13, name='editar_nr13'), # Futuro
 
+    path('configuracoes/matriz/', views.configurar_matriz_sst, name='configurar_matriz_sst'),
+    path('api/consulta-matriz/', views.api_consulta_matriz, name='api_consulta_matriz'),
+
 
     path('exames/editar/<int:exame_id>/', views.editar_exame, name='editar_exame'),
+
+    path('api/tipo-exame/novo/', views.api_criar_tipo_exame, name='api_criar_tipo_exame'),
+
+    path('configuracoes/matriz/', views.configurar_matriz_sst, name='configurar_matriz_sst'),
+    
+    # API para consulta no cadastro de funcionário
+    path('api/consulta-matriz/', views.api_consulta_matriz, name='api_consulta_matriz'),
+    
+    # API para criar exame via modal (CORREÇÃO DO ERRO ANTERIOR)
+    path('api/tipo-exame/novo/', views.api_criar_tipo_exame, name='api_criar_tipo_exame'),
+
+    path('api/estrutura/<str:tipo>/', views.api_gerenciar_estrutura, name='api_gerenciar_estrutura'),
 ]

@@ -1,0 +1,329 @@
+{% extends 'dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* WIZARD & NAVEGAÇÃO */
+    .step-content { display: none; animation: fadeIn 0.3s; }
+    .step-content.active { display: block; }
+    
+    .step-header { display: flex; justify-content: space-between; margin-bottom: 20px; position: relative; }
+    .step-header::before { content: ""; position: absolute; top: 14px; left: 0; width: 100%; height: 2px; background: #e0e0e0; z-index: 0; }
+    .step-dot { position: relative; z-index: 1; background: white; border: 2px solid #ccc; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #999; }
+    .step-dot.active { border-color: #0d6efd; background: #0d6efd; color: white; }
+    .step-dot.completed { border-color: #198754; background: #198754; color: white; }
+
+    /* CHECKBOXES CUSTOMIZADOS (O Segredo do Visual) */
+    .custom-check-list {
+        max-height: 350px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 0;
+    }
+    
+    .check-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 15px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .check-item:hover { background-color: #f8f9fa; }
+    .check-item:last-child { border-bottom: none; }
+    
+    /* Esconde o checkbox padrão feio e cria um customizado */
+    .check-item input[type="checkbox"] {
+        transform: scale(1.3);
+        margin-right: 12px;
+        cursor: pointer;
+    }
+    
+    .check-item label {
+        cursor: pointer;
+        width: 100%;
+        margin: 0;
+        font-weight: 500;
+        color: #495057;
+    }
+
+    /* Cards de Resumo */
+    .card-resumo { transition: transform 0.2s; }
+    .card-resumo:hover { transform: translateY(-3px); }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark"><i class="fas fa-network-wired text-primary me-2"></i> Matriz de Riscos (PGR/PCMSO)</h2>
+            <p class="text-muted mb-0">Vincule Riscos, Exames e Treinamentos a cada Função.</p>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-outline-primary" onclick="modalSetor.show()">+ Setor</button>
+            <button class="btn btn-outline-primary" onclick="modalCargo.show()">+ Função</button>
+            <button class="btn btn-primary shadow-sm" onclick="abrirWizard()">
+                <i class="fas fa-plus-circle me-2"></i> Criar Vínculo
+            </button>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" id="myTab" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-matriz">Matriz Vigente</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-setores">Gerenciar Setores</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-cargos">Gerenciar Funções</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-matriz">
+            <div class="row g-3">
+                {% for regra in regras %}
+                <div class="col-xl-4 col-md-6">
+                    <div class="card h-100 border-0 shadow-sm card-resumo">
+                        <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                            <span class="badge bg-light text-dark border float-end">{{ regra.setor.nome }}</span>
+                            <h5 class="fw-bold text-primary mb-0">{{ regra.cargo.nome }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <hr class="my-2 opacity-10">
+                            <div class="row text-center mt-3">
+                                <div class="col-3">
+                                    <h4 class="fw-bold text-danger mb-0">{{ regra.riscos.count }}</h4>
+                                    <small class="text-muted" style="font-size: 10px;">RISCOS</small>
+                                </div>
+                                <div class="col-3">
+                                    <h4 class="fw-bold text-success mb-0">{{ regra.exames.count }}</h4>
+                                    <small class="text-muted" style="font-size: 10px;">EXAMES</small>
+                                </div>
+                                <div class="col-3">
+                                    <h4 class="fw-bold text-warning mb-0">{{ regra.nrs.count }}</h4>
+                                    <small class="text-muted" style="font-size: 10px;">NRS</small>
+                                </div>
+                                <div class="col-3">
+                                    <h4 class="fw-bold text-info mb-0">{{ regra.vacinas.count }}</h4>
+                                    <small class="text-muted" style="font-size: 10px;">VACINAS</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white border-0">
+                            <button class="btn btn-sm btn-outline-secondary w-100">Editar Detalhes</button>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-5">
+                    <div class="text-muted display-1 mb-3"><i class="fas fa-folder-open"></i></div>
+                    <h4>Nenhuma configuração encontrada.</h4>
+                    <p>Clique em "Criar Vínculo" para começar.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-setores">
+            {% include "setores/lista.html" %} <div class="alert alert-info">Gerencie os setores na aba dedicada ou use o botão "+ Setor".</div>
+        </div>
+        
+        <div class="tab-pane fade" id="tab-cargos">
+             <div class="alert alert-info">Gerencie os cargos na aba dedicada ou use o botão "+ Função".</div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalWizard" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">Configurar Matriz SST</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <form method="post" id="formWizard">
+                {% csrf_token %}
+                <input type="hidden" name="matriz_submit" value="1">
+
+                <div class="modal-body">
+                    <div class="step-header px-5">
+                        <div class="step-dot active" id="dot-1">1</div>
+                        <div class="step-dot" id="dot-2">2</div>
+                        <div class="step-dot" id="dot-3">3</div>
+                        <div class="step-dot" id="dot-4">4</div>
+                        <div class="step-dot" id="dot-5">5</div>
+                    </div>
+                    <div class="text-center mb-3 fw-bold text-secondary" id="step-title">Identificação</div>
+
+                    <div class="step-content active" id="step-1">
+                        <div class="p-3 bg-light rounded border">
+                            <div class="mb-3">
+                                <label class="fw-bold">Setor</label>
+                                {{ form.setor }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="fw-bold">Cargo</label>
+                                {{ form.cargo }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-content" id="step-2">
+                        <input type="text" class="form-control mb-2" placeholder="🔍 Buscar NR..." onkeyup="filtrar(this, 'list-nrs')">
+                        <div class="custom-check-list" id="list-nrs">
+                            {% for checkbox in form.nrs %}
+                            <div class="check-item">
+                                {{ checkbox.tag }}
+                                <label for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="step-content" id="step-3">
+                        <div class="alert alert-warning py-1 small"><i class="fas fa-info-circle"></i> Selecione os riscos do PGR.</div>
+                        <input type="text" class="form-control mb-2" placeholder="🔍 Buscar Risco (Ex: Ruído)..." onkeyup="filtrar(this, 'list-riscos')">
+                        <div class="custom-check-list" id="list-riscos">
+                            {% for checkbox in form.riscos %}
+                            <div class="check-item">
+                                {{ checkbox.tag }}
+                                <label for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="step-content" id="step-4">
+                        <input type="text" class="form-control mb-2" placeholder="🔍 Buscar Vacina..." onkeyup="filtrar(this, 'list-vacinas')">
+                        <div class="custom-check-list" id="list-vacinas">
+                            {% for checkbox in form.vacinas %}
+                            <div class="check-item">
+                                {{ checkbox.tag }}
+                                <label for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="step-content" id="step-5">
+                        <div class="d-flex justify-content-between mb-2">
+                            <input type="text" class="form-control w-75" placeholder="🔍 Buscar Exame..." onkeyup="filtrar(this, 'list-exames')">
+                            <button type="button" class="btn btn-sm btn-success" onclick="novoExameModal()">+ Novo</button>
+                        </div>
+                        <div class="custom-check-list" id="list-exames">
+                            {% for checkbox in form.exames %}
+                            <div class="check-item">
+                                {{ checkbox.tag }}
+                                <label for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-secondary" id="btnPrev" onclick="mudarPasso(-1)" disabled>Voltar</button>
+                    <button type="button" class="btn btn-primary px-4" id="btnNext" onclick="mudarPasso(1)">Próximo</button>
+                    <button type="submit" class="btn btn-success px-4 d-none" id="btnSubmit">Concluir Matriz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSetor" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>Novo Setor</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form onsubmit="salvarAuxiliar(event, 'setor')">{% csrf_token %}{{ form_setor.as_p }}<button class="btn btn-primary w-100">Salvar</button></form></div></div></div></div>
+<div class="modal fade" id="modalCargo" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>Nova Função</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form onsubmit="salvarAuxiliar(event, 'cargo')">{% csrf_token %}{{ form_cargo.as_p }}<button class="btn btn-primary w-100">Salvar</button></form></div></div></div></div>
+
+<script>
+    let passo = 1;
+    const titulos = ["Identificação", "Normas Regulamentadoras", "Riscos Ocupacionais", "Vacinas", "Exames PCMSO"];
+    
+    // Inicialização
+    var modalWizard = new bootstrap.Modal(document.getElementById('modalWizard'));
+    var modalSetor = new bootstrap.Modal(document.getElementById('modalSetor'));
+    var modalCargo = new bootstrap.Modal(document.getElementById('modalCargo'));
+
+    function abrirWizard() {
+        passo = 1;
+        atualizarUI();
+        modalWizard.show();
+    }
+
+    function mudarPasso(d) {
+        // Validação simples do passo 1
+        if (passo === 1 && d === 1) {
+            if(!document.querySelector('[name="setor"]').value || !document.querySelector('[name="cargo"]').value){
+                alert("Selecione Setor e Cargo!"); return;
+            }
+        }
+        passo += d;
+        atualizarUI();
+    }
+
+    function atualizarUI() {
+        // Conteúdo
+        document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+        document.getElementById(`step-${passo}`).classList.add('active');
+        
+        // Título
+        document.getElementById('step-title').innerText = titulos[passo-1];
+
+        // Bolinhas (Dots)
+        for(let i=1; i<=5; i++){
+            let dot = document.getElementById(`dot-${i}`);
+            dot.className = 'step-dot';
+            if(i < passo) dot.classList.add('completed');
+            if(i === passo) dot.classList.add('active');
+            if(i < passo) dot.innerHTML = '<i class="fas fa-check"></i>';
+            else dot.innerText = i;
+        }
+
+        // Botões
+        document.getElementById('btnPrev').disabled = (passo === 1);
+        
+        if(passo === 5) {
+            document.getElementById('btnNext').classList.add('d-none');
+            document.getElementById('btnSubmit').classList.remove('d-none');
+        } else {
+            document.getElementById('btnNext').classList.remove('d-none');
+            document.getElementById('btnSubmit').classList.add('d-none');
+        }
+    }
+
+    function filtrar(input, idLista) {
+        let termo = input.value.toLowerCase();
+        let itens = document.getElementById(idLista).getElementsByClassName('check-item');
+        for (let item of itens) {
+            let texto = item.innerText.toLowerCase();
+            item.style.display = texto.includes(termo) ? "flex" : "none";
+        }
+    }
+
+    // AJAX para Setor/Cargo
+    function salvarAuxiliar(e, tipo) {
+        e.preventDefault();
+        let form = e.target;
+        let data = new FormData(form);
+        fetch(`/api/estrutura/${tipo}/`, { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(res => {
+            if(res.success) { location.reload(); }
+            else { alert('Erro ao salvar'); }
+        });
+    }
+    
+    function novoExameModal() {
+        let nome = prompt("Nome do exame:");
+        if(nome) {
+            let data = new FormData();
+            data.append('nome', nome);
+            data.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            fetch("{% url 'api_criar_tipo_exame' %}", { method:'POST', body:data })
+            .then(r=>r.json()).then(res=>{
+                if(res.success) { alert("Exame criado! Recarregue para ver na lista."); }
+            });
+        }
+    }
+</script>
+{% endblock %}

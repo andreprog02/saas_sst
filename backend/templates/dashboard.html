@@ -242,6 +242,10 @@
             font-size: 1.25rem;
             margin-bottom: 1rem;
         }
+
+        /* --- NOVO ESTILO: INTELIGÊNCIA MATRIZ --- */
+        .bg-ai-light { background: rgba(59, 130, 246, 0.05); }
+        .border-ai { border-left: 4px solid var(--primary) !important; }
     </style>
 </head>
 <body>
@@ -299,9 +303,13 @@
                         <i class="fas fa-chevron-down arrow-icon"></i>
                     </a>
                     
-                    <div class="submenu {% if 'config' in request.path or 'gerenciar' in request.path %}show{% endif %}" id="menuConfig">
+                    <div class="submenu {% if 'config' in request.path or 'gerenciar' in request.path or 'matriz' in request.path %}show{% endif %}" id="menuConfig">
                         <a href="{% url 'lista_setores' %}" class="nav-link {% if 'setores' in request.path %}active{% endif %}">Setores</a>
                         
+                        <a href="{% url 'configurar_matriz_sst' %}" class="nav-link {% if 'matriz' in request.path %}active{% endif %}">
+                            <i class="fas fa-brain me-2" style="font-size: 0.8rem;"></i> Matriz SST
+                        </a>
+
                         <a href="{% url 'config_locais' %}" class="nav-link {% if 'locais' in request.path %}active{% endif %}">Locais Físicos</a>
                         <a href="{% url 'config_tipos_epi' %}" class="nav-link {% if 'tipos-epi' in request.path %}active{% endif %}">Categorias EPI</a>
                         <a href="{% url 'gerenciar_vacinas' %}" class="nav-link {% if 'vacinas' in request.path %}active{% endif %}">Vacinas Padrão</a>
@@ -357,6 +365,16 @@
                     </div>
 
                     <div class="col-md-6 col-lg-3">
+                        <a href="{% url 'configurar_matriz_sst' %}" class="stat-card border-ai bg-ai-light">
+                            <div class="icon-square bg-primary text-white shadow-sm">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <h6 class="text-primary text-uppercase fw-bold" style="font-size: 0.75rem;">Inteligência SST</h6>
+                            <h3 class="fw-bold text-dark mb-0">Matriz EPI</h3>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6 col-lg-3">
                         <a href="{% url 'lista_funcionarios' %}" class="stat-card">
                             <div class="icon-square bg-primary bg-opacity-10 text-primary">
                                 <i class="fas fa-users"></i>
@@ -377,22 +395,12 @@
                     </div>
 
                     <div class="col-md-6 col-lg-3">
-                        <a href="{% url 'lista_extintores' %}" class="stat-card">
-                            <div class="icon-square bg-danger bg-opacity-10 text-danger">
-                                <i class="fas fa-fire-extinguisher"></i>
-                            </div>
-                            <h6 class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Extintores</h6>
-                            <h3 class="fw-bold text-dark mb-0">Inspeções</h3>
-                        </a>
-                    </div>
-
-                    <div class="col-md-6 col-lg-3">
                         <div class="stat-card d-flex flex-column justify-content-center gap-2 p-3">
                             <a href="{% url 'novo_funcionario' %}" class="btn btn-outline-primary btn-sm w-100 fw-bold border-2">
                                 <i class="fas fa-plus me-2"></i> Novo Colaborador
                             </a>
-                            <a href="{% url 'novo_epi' %}" class="btn btn-outline-dark btn-sm w-100 fw-bold border-2">
-                                <i class="fas fa-plus me-2"></i> Novo EPI
+                            <a href="{% url 'configurar_matriz_sst' %}" class="btn btn-outline-dark btn-sm w-100 fw-bold border-2">
+                                <i class="fas fa-sliders-h me-2"></i> Regras Matriz
                             </a>
                         </div>
                     </div>

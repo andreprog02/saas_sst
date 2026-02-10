@@ -1,61 +1,43 @@
-import csv
 import json
-import qrcode
 from datetime import date, timedelta
-from io import BytesIO
-# Em core/views.py
-from django.db.models import Count, Q
-from .models import ProdutoQuimico, RiscoOcupacional, Setor
-from .forms import ProdutoQuimicoForm, RiscoOcupacionalForm
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse
-from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
-from django.core.files.base import ContentFile
-from django.db.models import Count, Q, ProtectedError
-from django.db.models.functions import TruncMonth
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from .serializers import ProdutoQuimicoSerializer
 from django.contrib import messages
+from django.http import JsonResponse
+from django.db.models import Count, Q, ProtectedError
+from django.contrib.auth import login
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
-from .models import Exame  # Adicione Exame à lista de imports
-from .forms import ExameForm  # Adicione ExameForm à lista de imports
+from .serializers import ProdutoQuimicoSerializer
 
-from .models import ArCondicionado, EquipamentoNR13
-from .forms import ArCondicionadoForm, EquipamentoNR13Form
-
-# --- IMPORTAÇÃO DOS MODELOS ---
+# --- IMPORTAÇÃO DOS MODELOS (ÚNICA) ---
 from .models import (
-    Empresa, Funcionario, Setor, NormaRegulamentadora,
-    EPI, TipoEPI, Localizacao, Vacina,
-    Advertencia, TipoAdvertencia,
+    Empresa, Funcionario, Setor, Cargo, NormaRegulamentadora, RiscoOcupacional,
+    Vacina, TipoExame, MatrizRiscoEPI,
+    EPI, TipoEPI, CategoriaEPI, MarcaEPI, TamanhoEPI, EntregaEPI, MovimentacaoEstoque, Localizacao,
     Extintor, InspecaoExtintor, FotoInspecao,
+    ProdutoQuimico, ExposicaoOcupacional,
     Equipamento, InspecaoEquipamento, ArquivoInspecao,
-    # Prontuário
-    ControleVacina, EntregaEPI, TreinamentoFuncionario,
-    Afastamento, AcidenteTrabalho, MovimentacaoEstoque,
-    # Quimicos, Hospitais e Novos do EPI
-    ProdutoQuimico, Hospital, TipoEspecialidade,
-    CategoriaEPI, MarcaEPI, TamanhoEPI, ExposicaoOcupacional
+    ArCondicionado, EquipamentoNR13,
+    Hospital, TipoEspecialidade, Exame,
+    Advertencia, TipoAdvertencia, Afastamento, AcidenteTrabalho,
+    TreinamentoFuncionario, ControleVacina
 )
 
-# --- IMPORTAÇÃO DOS FORMULÁRIOS ---
+# --- IMPORTAÇÃO DOS FORMULÁRIOS (ÚNICA) ---
 from .forms import (
-    CadastroSaaSForm, FuncionarioForm, SetorForm,
-    TipoEPIForm, LocalizacaoForm, EPIForm, VacinaForm,
-    TipoAdvertenciaForm, AdvertenciaForm, AdvertenciaFuncionarioForm,
+    CadastroSaaSForm, FuncionarioForm,
+    SetorForm, CargoForm, MatrizRiscoEPIForm, TipoExameForm,
+    EPIForm, EntregaEPIForm, CategoriaEPIForm, MarcaEPIForm, TamanhoEPIForm, TipoEPIForm, LocalizacaoForm,
     ExtintorForm, InspecaoExtintorForm,
     EquipamentoForm, InspecaoEquipamentoForm,
-    # Forms do Prontuário
-    ControleVacinaForm, EntregaEPIForm, TreinamentoFuncionarioForm,
-    AfastamentoForm, AcidenteTrabalhoForm,
-    # Forms Novos
-    ProdutoQuimicoForm, HospitalForm, TipoEspecialidadeForm,
-    # Forms dos Modais de EPI
-    CategoriaEPIForm, MarcaEPIForm, TamanhoEPIForm
+    ProdutoQuimicoForm, RiscoOcupacionalForm,
+    HospitalForm, TipoEspecialidadeForm,
+    ArCondicionadoForm, EquipamentoNR13Form,
+    VacinaForm, ControleVacinaForm, TreinamentoFuncionarioForm,
+    AdvertenciaForm, AdvertenciaFuncionarioForm, TipoAdvertenciaForm,
+    AfastamentoForm, AcidenteTrabalhoForm, ExameForm
 )
 
 # --- VIEWS GERAIS ---
@@ -105,31 +87,25 @@ def lista_funcionarios(request):
     if filtro_cargo:
         funcionarios = funcionarios.filter(cargo=filtro_cargo)
 
-    # --- 2. Estatísticas (Correção do erro 111) ---
-    # Calculamos aqui para evitar lógica complexa no template
+    # --- 2. Estatísticas ---
     total_colaboradores = funcionarios.count()
     total_ativos = funcionarios.filter(situacao='ATIVO').count()
     total_afastados = funcionarios.filter(Q(situacao='AFASTADO') | Q(situacao='FERIAS')).count()
 
     # --- 3. Dados para os Dropdowns dos Filtros ---
     setores = Setor.objects.filter(empresa=empresa).order_by('nome')
-    # Pega todos os cargos distintos já cadastrados para montar o select
-    cargos = Funcionario.objects.filter(empresa=empresa).values_list('cargo', flat=True).distinct().order_by('cargo')
+    cargos = Cargo.objects.filter(empresa=empresa).order_by('nome') 
 
     context = {
         'funcionarios': funcionarios,
         'total_colaboradores': total_colaboradores,
         'total_ativos': total_ativos,
         'total_afastados': total_afastados,
-        
-        # Passando listas para preencher os selects
         'setores': setores,
         'cargos': cargos,
-        
-        # Mantendo o estado dos filtros na tela
         'busca_atual': busca,
         'status_atual': filtro_status,
-        'setor_atual': filtro_setor and int(filtro_setor), # converte pra int para comparar no template
+        'setor_atual': filtro_setor and int(filtro_setor) if filtro_setor else '',
         'cargo_atual': filtro_cargo,
     }
     
@@ -171,10 +147,9 @@ def editar_funcionario(request, id):
 def detalhe_funcionario(request, id):
     empresa = request.user.perfil.empresa
     funcionario = get_object_or_404(Funcionario, pk=id, empresa=empresa)
-    exames = funcionario.exames.all().order_by('-data_realizacao') # NOVO: Lista de exames
     
     # Listagens
-
+    exames = funcionario.exames.all().order_by('-data_realizacao')
     vacinas = funcionario.vacinas.all().order_by('data_proximo_reforco')
     epis = funcionario.epis_entregues.all().order_by('-data_entrega')
     treinamentos = funcionario.treinamentos.all().order_by('-data_realizacao')
@@ -185,7 +160,7 @@ def detalhe_funcionario(request, id):
     # Formulários para os Modais
     context = {
         'funcionario': funcionario,
-        'exames': exames, # NOVO: Adicionar ao context
+        'exames': exames,
         'vacinas': vacinas,
         'epis': epis,
         'treinamentos': treinamentos,
@@ -292,7 +267,6 @@ def criar_setor(request):
             setor = form.save(commit=False)
             setor.empresa = empresa
             setor.save()
-            form.save_m2m()
             return redirect('dashboard')
     else:
         form = SetorForm(empresa)
@@ -403,9 +377,7 @@ def api_criar_categoria_epi(request):
             cat.empresa = request.user.perfil.empresa
             cat.save()
             return JsonResponse({'success': True, 'id': cat.id, 'nome': cat.nome})
-        else:
-            return JsonResponse({'success': False, 'error': form.errors.as_json()})
-    return JsonResponse({'success': False, 'error': 'Método inválido'})
+    return JsonResponse({'success': False})
 
 @login_required
 def api_criar_marca_epi(request):
@@ -416,9 +388,7 @@ def api_criar_marca_epi(request):
             marca.empresa = request.user.perfil.empresa
             marca.save()
             return JsonResponse({'success': True, 'id': marca.id, 'nome': marca.nome})
-        else:
-            return JsonResponse({'success': False, 'error': form.errors.as_json()})
-    return JsonResponse({'success': False, 'error': 'Método inválido'})
+    return JsonResponse({'success': False})
 
 @login_required
 def api_criar_tamanho_epi(request):
@@ -429,9 +399,7 @@ def api_criar_tamanho_epi(request):
             tam.empresa = request.user.perfil.empresa
             tam.save()
             return JsonResponse({'success': True, 'id': tam.id, 'nome': tam.tamanho})
-        else:
-            return JsonResponse({'success': False, 'error': form.errors.as_json()})
-    return JsonResponse({'success': False, 'error': 'Método inválido'})
+    return JsonResponse({'success': False})
 
 @login_required
 def api_criar_especialidade(request):
@@ -443,9 +411,7 @@ def api_criar_especialidade(request):
             esp.empresa = request.user.perfil.empresa
             esp.save()
             return JsonResponse({'success': True, 'id': esp.id, 'nome': esp.nome})
-        else:
-            return JsonResponse({'success': False, 'error': form.errors.as_json()})
-    return JsonResponse({'success': False, 'error': 'Método inválido'})
+    return JsonResponse({'success': False})
 
 # --- ADVERTÊNCIAS ---
 
@@ -494,26 +460,16 @@ def documento_advertencia(request, adv_id):
 
 @login_required
 def lista_extintores(request):
-    # 1. Base Query (Pega todos os extintores da empresa do usuário)
-    # Importante: Começamos com "all()" para depois ir filtrando
     extintores = Extintor.objects.filter(empresa=request.user.perfil.empresa)
-
-    # 2. Captura os parâmetros da URL (GET)
+    # Filtros
     filtro_status = request.GET.get('status')
     filtro_agente = request.GET.get('agente')
     termo_busca = request.GET.get('busca')
 
-    # 3. Aplica os Filtros (Se existirem e não forem "TODOS")
-    
-    # Filtro de Status (Situação)
     if filtro_status and filtro_status != 'TODOS':
         extintores = extintores.filter(situacao=filtro_status)
-    
-    # Filtro de Agente (Tipo)
     if filtro_agente and filtro_agente != 'TODOS':
         extintores = extintores.filter(agente=filtro_agente)
-
-    # Filtro de Busca (Texto livre)
     if termo_busca:
         extintores = extintores.filter(
             Q(codigo_patrimonial__icontains=termo_busca) |
@@ -521,44 +477,26 @@ def lista_extintores(request):
             Q(localizacao__nome__icontains=termo_busca)
         )
 
-    # 4. Estatísticas para os Cards (Calculadas SEMPRE sobre o total da empresa, não sobre o filtro atual)
-    # Isso garante que os cards mostrem o panorama geral, mesmo se você filtrar a tabela.
-    
+    # Stats para cards
+    todos_extintores = Extintor.objects.filter(empresa=request.user.perfil.empresa)
     hoje = date.today()
     daqui_30_dias = hoje + timedelta(days=30)
     
-    # Query separada para stats para não ser afetada pelos filtros da tabela
-    todos_extintores = Extintor.objects.filter(empresa=request.user.perfil.empresa)
-    
     stats = {
         'total': todos_extintores.count(),
-        
-        # A Vencer: Próxima recarga entre Hoje e Hoje+30 dias E status Ativo
         'a_vencer': todos_extintores.filter(
-            data_proxima_manutencao__range=[hoje, daqui_30_dias],
-            situacao='ATIVO'
+            data_proxima_manutencao__range=[hoje, daqui_30_dias], situacao='ATIVO'
         ).count(),
-        
-        # Vencidos: Status VENCIDO OU Data menor que hoje
         'vencidos': todos_extintores.filter(
             Q(situacao='VENCIDO') | Q(data_proxima_manutencao__lt=hoje)
         ).count(),
-        
-        # Em Manutenção
         'manutencao': todos_extintores.filter(situacao='MANUTENCAO').count()
     }
 
-    # 5. Contexto para o Template
     context = {
-        'extintores': extintores,      # Lista filtrada para a tabela
-        'stats': stats,                # Números para os cards
-        
-        # Passamos os filtros de volta para manter o <select> selecionado na tela
-        'filtro_status': filtro_status,
-        'filtro_agente': filtro_agente,
-        'busca_atual': termo_busca
+        'extintores': extintores, 'stats': stats,
+        'filtro_status': filtro_status, 'filtro_agente': filtro_agente, 'busca_atual': termo_busca
     }
-    
     return render(request, 'extintores/extintores_lista.html', context)
 
 @login_required
@@ -676,7 +614,7 @@ def gerenciar_vacinas(request):
         form = VacinaForm(request.POST)
         if form.is_valid():
             vacina = form.save(commit=False)
-            vacina.empresa = empresa  # <--- O ERRO ESTAVA AQUI (Faltava vincular a empresa)
+            vacina.empresa = empresa
             vacina.save()
             messages.success(request, 'Vacina cadastrada com sucesso!')
             return redirect('gerenciar_vacinas')
@@ -692,22 +630,18 @@ def gerenciar_vacinas(request):
 
 @login_required
 def popular_vacinas(request):
-    """Cria automaticamente as vacinas padrão do PCMSO"""
     empresa = request.user.perfil.empresa
-    
-    # Lista de Vacinas Padrão (Nome, Meses para Reforço, Descrição)
     lista_padrao = [
         ('Antitetânica (dT)', 120, 'Reforço a cada 10 anos.'),
         ('Hepatite B', 0, 'Esquema de 3 doses. Reforço não é rotina.'),
-        ('Tríplice Viral', 0, 'Sarampo, Caxumba e Rubéola. Dose única ou duas doses.'),
+        ('Tríplice Viral', 0, 'Sarampo, Caxumba e Rubéola.'),
         ('Febre Amarela', 0, 'Dose única (áreas de risco).'),
         ('Influenza (Gripe)', 12, 'Dose anual (campanha).'),
-        ('COVID-19', 0, 'Conforme calendário do Ministério da Saúde.'),
+        ('COVID-19', 0, 'Conforme calendário MS.'),
     ]
     
     contador = 0
     for nome, meses, desc in lista_padrao:
-        # get_or_create evita duplicidade
         _, created = Vacina.objects.get_or_create(
             empresa=empresa,
             nome=nome,
@@ -723,186 +657,37 @@ def popular_vacinas(request):
 @login_required
 def dashboard_quimicos(request):
     empresa = request.user.perfil.empresa
-    
-    # Produtos Químicos
-    produtos = ProdutoQuimico.objects.filter(empresa=empresa)
-    total_quimicos = produtos.count()
-    
-    # Cálculo de validade (Exemplo simples)
-    hoje = date.today()
-    alerta_quimicos = 0 # Lógica simplificada para evitar erro se campo não existir
-    
-    # Mapa de Riscos (Setores com seus riscos)
-    setores_mapa = Setor.objects.filter(empresa=empresa).prefetch_related('riscos')
-    total_setores = setores_mapa.count()
-    
-    # Riscos Ocupacionais
-    todos_riscos = RiscoOcupacional.objects.filter(empresa=empresa)
-    total_riscos = todos_riscos.count()
-    
-    # Form para modal
-    form_risco = RiscoOcupacionalForm(empresa.id)
-
-    context = {
-        'produtos': produtos,
-        'total_quimicos': total_quimicos,
-        'alerta_quimicos': alerta_quimicos,
-        'setores_mapa': setores_mapa,
-        'todos_riscos': todos_riscos,
-        'total_riscos': total_riscos,
-        'total_setores': total_setores,
-        'form_risco': form_risco,
-    }
-    return render(request, 'quimicos/dashboard.html', context)
-
-# --- VIEWS DE RISCO OCUPACIONAL (Que estavam faltando) ---
-
-@login_required
-def criar_risco(request):
-    empresa = request.user.perfil.empresa
-    if request.method == 'POST':
-        form = RiscoOcupacionalForm(empresa.id, request.POST)
-        if form.is_valid():
-            risco = form.save(commit=False)
-            risco.empresa = empresa
-            risco.save()
-            return redirect('dashboard_quimicos')
-    return redirect('dashboard_quimicos')
-
-@login_required
-def deletar_risco(request, id):
-    empresa = request.user.perfil.empresa
-    risco = get_object_or_404(RiscoOcupacional, pk=id, empresa=empresa)
-    risco.delete()
-    return redirect('dashboard_quimicos')
-
-@login_required
-def associar_risco_setor(request, setor_id):
-    empresa = request.user.perfil.empresa
-    setor = get_object_or_404(Setor, pk=setor_id, empresa=empresa)
-    
-    if request.method == 'POST':
-        riscos_ids = request.POST.getlist('riscos')
-        setor.riscos.clear() # Limpa anteriores
-        for r_id in riscos_ids:
-            r = get_object_or_404(RiscoOcupacional, pk=r_id, empresa=empresa)
-            setor.riscos.add(r)
-        setor.save()
-        
-    return redirect('dashboard_quimicos')
-
-@login_required
-def novo_quimico(request):
-    return criar_editar_quimico_logica(request, None)
-
-@login_required
-def editar_quimico(request, id):
-    return criar_editar_quimico_logica(request, id)
-
-def criar_editar_quimico_logica(request, pk):
-    empresa = request.user.perfil.empresa
-    produto = get_object_or_404(ProdutoQuimico, pk=pk, empresa=empresa) if pk else None
-    if request.method == 'POST':
-        form = ProdutoQuimicoForm(empresa.id, request.POST, request.FILES, instance=produto)
-        if form.is_valid():
-            obj = form.save(commit=False)
-            obj.empresa = empresa
-            obj.save()
-            return redirect('dashboard_quimicos')
-    else:
-        form = ProdutoQuimicoForm(empresa.id, instance=produto)
-    return render(request, 'generic_form.html', {'form': form, 'titulo': 'Produto Químico'})
-
-@login_required
-def deletar_quimico(request, pk):
-    empresa = request.user.perfil.empresa
-    produto = get_object_or_404(ProdutoQuimico, pk=pk, empresa=empresa)
-    if request.method == 'POST':
-        produto.delete()
-        return redirect('dashboard_quimicos')
-    return render(request, 'confirmar_delete.html', {'objeto': produto})
-
-# --- HOSPITAIS ---
-
-@login_required
-def dashboard_hospitais(request):
-    empresa = request.user.perfil.empresa
-    hospitais = Hospital.objects.filter(empresa=empresa)
-    return render(request, 'hospitais/dashboard.html', {'hospitais': hospitais})
-
-@login_required
-def novo_hospital(request):
-    empresa = request.user.perfil.empresa
-    if request.method == 'POST':
-        form = HospitalForm(empresa.id, request.POST)
-        if form.is_valid():
-            obj = form.save(commit=False)
-            obj.empresa = empresa
-            obj.save()
-            form.save_m2m()
-            return redirect('dashboard_hospitais')
-    else:
-        form = HospitalForm(empresa.id)
-    return render(request, 'hospitais/form.html', {'form': form})
-
-@login_required
-def config_hospitais(request):
-    empresa = request.user.perfil.empresa
-    tipos = TipoEspecialidade.objects.filter(empresa=empresa)
-    form = TipoEspecialidadeForm(request.POST or None)
-    if request.method == 'POST':
-        if form.is_valid():
-            obj = form.save(commit=False)
-            obj.empresa = empresa
-            obj.save()
-            return redirect('config_hospitais')
-    return render(request, 'hospitais/gerenciar_especialidades.html', {'tipos': tipos, 'form': form})
-
-
-@login_required
-def dashboard_quimicos(request):
-    empresa = request.user.perfil.empresa
-    
-    # 1. Dados de Inventário
     produtos = ProdutoQuimico.objects.filter(empresa=empresa)
     
-    # Filtros simples (busca)
     termo = request.GET.get('busca')
     if termo:
         produtos = produtos.filter(
             Q(nome__icontains=termo) | Q(cas_number__icontains=termo)
         )
 
-    # 2. Dados de Exposição
     exposicoes = ExposicaoOcupacional.objects.filter(empresa=empresa).select_related('funcionario', 'produto_quimico', 'funcionario__setor')
     
-    # 3. Dados do Mapa de Riscos (Cálculo Agregado)
-    # Agrupa produtos por setor para contar riscos
     setores_risco = []
     setores = Setor.objects.filter(empresa=empresa)
-    
     for setor in setores:
         prods_setor = produtos.filter(setor=setor)
         funcionarios_setor = Funcionario.objects.filter(setor=setor).count()
         qtd_produtos = prods_setor.count()
-        
-        # Lógica simples de nível de risco baseada na quantidade de produtos perigosos
         nivel = 'baixo'
         if qtd_produtos > 10: nivel = 'alto'
         elif qtd_produtos > 5: nivel = 'medio'
         
-        # Coletar todos os GHS desse setor
         riscos_setor = set()
         for p in prods_setor:
             riscos_setor.update(p.lista_ghs)
             
-        if qtd_produtos > 0: # Só mostra setores com químicos
+        if qtd_produtos > 0:
             setores_risco.append({
                 'nome': setor.nome,
                 'nivel': nivel,
                 'produtos': qtd_produtos,
                 'funcionarios': funcionarios_setor,
-                'principais_riscos': list(riscos_setor)[:3] # Pega os 3 primeiros
+                'principais_riscos': list(riscos_setor)[:3]
             })
 
     form = ProdutoQuimicoForm(empresa.id)
@@ -917,22 +702,15 @@ def dashboard_quimicos(request):
 
 
 @api_view(['GET'])
-#@permission_classes([IsAuthenticated])
 def api_lista_quimicos(request):
-    """
-    Retorna a lista de produtos químicos da empresa do usuário em JSON.
-    """
     try:
         empresa = request.user.perfil.empresa
-        # CORREÇÃO: Removido .select_related('localizacao') para evitar o erro 500
         produtos = ProdutoQuimico.objects.filter(empresa=empresa)
         serializer = ProdutoQuimicoSerializer(produtos, many=True)
         return Response(serializer.data)
     except AttributeError:
         return Response({"erro": "Usuário sem empresa vinculada"}, status=400)
     
-
-
 @login_required
 def lista_setores(request):
     empresa = request.user.perfil.empresa
@@ -948,8 +726,6 @@ def novo_setor(request):
             setor = form.save(commit=False)
             setor.empresa = empresa
             setor.save()
-            # Se houver ManyToMany no form (ex: riscos), salvar aqui:
-            # form.save_m2m() 
             return redirect('lista_setores')
     else:
         form = SetorForm(empresa)
@@ -967,25 +743,19 @@ def editar_setor(request, id):
             return redirect('lista_setores')
     else:
         form = SetorForm(empresa, instance=setor)
-    
     return render(request, 'generic_form.html', {'form': form, 'titulo': f'Editar: {setor.nome}'})
 
 @login_required
 def deletar_setor(request, id):
     empresa = request.user.perfil.empresa
     setor = get_object_or_404(Setor, pk=id, empresa=empresa)
-    
     if request.method == 'POST':
         try:
             setor.delete()
         except ProtectedError:
-            # Caso o setor tenha funcionários/produtos vinculados
-            # Você pode adicionar uma mensagem de erro aqui se quiser
             pass
         return redirect('lista_setores')
-        
     return render(request, 'confirmar_delete.html', {'objeto': setor})
-
 
 @login_required
 def registrar_exame(request, func_id):
@@ -1008,31 +778,36 @@ def deletar_exame(request, exame_id):
     exame.delete()
     return redirect('detalhe_funcionario', id=func_id)
 
-
+@login_required
+def editar_exame(request, exame_id):
+    empresa = request.user.perfil.empresa
+    exame = get_object_or_404(Exame, pk=exame_id, empresa=empresa)
+    funcionario_id = exame.funcionario.id
+    if request.method == 'POST':
+        form = ExameForm(request.POST, request.FILES, instance=exame)
+        if form.is_valid():
+            form.save()
+            return redirect('detalhe_funcionario', id=funcionario_id)
+    return redirect('detalhe_funcionario', id=funcionario_id)
 
 # --- PMOC (AR CONDICIONADO) ---
 @login_required
 def lista_pmoc(request):
     base_qs = ArCondicionado.objects.filter(empresa=request.user.perfil.empresa)
-    
-    # Filtros
     busca = request.GET.get('busca')
     status = request.GET.get('status')
-    
     itens = base_qs
     if busca:
         itens = itens.filter(Q(nome__icontains=busca) | Q(codigo__icontains=busca))
     if status and status != 'todos':
         itens = itens.filter(status=status)
-        
-    # Stats
+    
     stats = {
         'total': base_qs.count(),
         'ativos': base_qs.filter(status='ativo').count(),
         'manutencao': base_qs.filter(status='manutencao').count(),
         'inativos': base_qs.filter(status='inativo').count(),
     }
-    
     return render(request, 'pmoc/lista.html', {'itens': itens, 'stats': stats})
 
 @login_required
@@ -1052,23 +827,20 @@ def novo_pmoc(request):
 @login_required
 def lista_nr13(request):
     base_qs = EquipamentoNR13.objects.filter(empresa=request.user.perfil.empresa)
-    
     busca = request.GET.get('busca')
     status = request.GET.get('status')
-    
     itens = base_qs
     if busca:
         itens = itens.filter(Q(nome__icontains=busca) | Q(codigo__icontains=busca))
     if status and status != 'todos':
         itens = itens.filter(status=status)
-        
+    
     stats = {
         'total': base_qs.count(),
         'ativos': base_qs.filter(status='ativo').count(),
         'manutencao': base_qs.filter(status='manutencao').count(),
         'inativos': base_qs.filter(status='inativo').count(),
     }
-    
     return render(request, 'nr13/lista.html', {'itens': itens, 'stats': stats})
 
 @login_required
@@ -1084,26 +856,213 @@ def novo_nr13(request):
         form = EquipamentoNR13Form()
     return render(request, 'nr13/form.html', {'form': form})
 
-
-# Adicione ao final do backend/core/views.py se elas não existirem:
-
-@login_required
-def lista_advertencias(request):
-    return render(request, 'dashboard.html') # Temporário até criar o template real
-
+# --- MATRIZ SST E ESTRUTURA (SETOR/CARGO) ---
 
 @login_required
-def editar_exame(request, exame_id):
+def configurar_matriz_sst(request):
     empresa = request.user.perfil.empresa
-    exame = get_object_or_404(Exame, pk=exame_id, empresa=empresa)
-    funcionario_id = exame.funcionario.id # Guarda o ID para o redirect
     
+    if request.method == 'POST' and 'matriz_submit' in request.POST:
+        form = MatrizRiscoEPIForm(empresa.id, request.POST)
+        if form.is_valid():
+            setor = form.cleaned_data['setor']
+            cargo = form.cleaned_data['cargo']
+            matriz, created = MatrizRiscoEPI.objects.get_or_create(
+                empresa=empresa, setor=setor, cargo=cargo
+            )
+            form_save = MatrizRiscoEPIForm(empresa.id, request.POST, instance=matriz)
+            form_save.save()
+            messages.success(request, 'Regra da Matriz salva com sucesso!')
+            return redirect('configurar_matriz_sst')
+        else:
+            messages.error(request, 'Erro ao salvar. Verifique os campos.')
+    
+    regras = MatrizRiscoEPI.objects.filter(empresa=empresa).select_related('setor', 'cargo')
+    setores = Setor.objects.filter(empresa=empresa)
+    cargos = Cargo.objects.filter(empresa=empresa)
+    
+    return render(request, 'configuracoes/matriz_sst.html', {
+        'regras': regras,
+        'setores': setores,
+        'cargos': cargos,
+        'form': MatrizRiscoEPIForm(empresa.id),
+        'form_setor': SetorForm(),
+        'form_cargo': CargoForm(),
+    })
+
+# --- APIs PARA A MATRIZ E CADASTRO (JSON) ---
+
+@login_required
+def api_consulta_matriz(request):
+    setor_id = request.GET.get('setor_id')
+    cargo_texto = request.GET.get('cargo')
+    empresa = request.user.perfil.empresa
+
+    if not setor_id or not cargo_texto:
+        return JsonResponse({'encontrado': False})
+
+    try:
+        cargo_obj = Cargo.objects.filter(empresa=empresa, nome__iexact=cargo_texto).first()
+        if not cargo_obj:
+            return JsonResponse({'encontrado': False, 'msg': 'Cargo não cadastrado na estrutura.'})
+
+        matriz = MatrizRiscoEPI.objects.filter(
+            empresa=empresa, setor_id=setor_id, cargo=cargo_obj
+        ).first()
+
+        if matriz:
+            return JsonResponse({
+                'encontrado': True,
+                'riscos': [f"{r.get_tipo_display()}: {r.agente}" for r in matriz.riscos.all()],
+                'epis': [e.nome for e in matriz.epis_obrigatorios.all()],
+                'nrs': [nr.codigo for nr in matriz.nrs.all()],
+                'vacinas': [v.nome for v in matriz.vacinas.all()],
+                'exames': [f"{e.nome} (TUSS: {e.codigo_tuss})" for e in matriz.exames.all()]
+            })
+    except Exception as e:
+        return JsonResponse({'encontrado': False, 'error': str(e)})
+    
+    return JsonResponse({'encontrado': False})
+
+@login_required
+def api_gerenciar_estrutura(request, tipo):
+    empresa = request.user.perfil.empresa
     if request.method == 'POST':
-        form = ExameForm(request.POST, request.FILES, instance=exame)
+        try:
+            if tipo == 'setor':
+                form = SetorForm(request.POST)
+                if form.is_valid():
+                    obj = form.save(commit=False)
+                    obj.empresa = empresa
+                    obj.save()
+                    return JsonResponse({'success': True, 'id': obj.id, 'nome': obj.nome})
+            elif tipo == 'cargo':
+                form = CargoForm(request.POST)
+                if form.is_valid():
+                    obj = form.save(commit=False)
+                    obj.empresa = empresa
+                    obj.save()
+                    return JsonResponse({'success': True, 'id': obj.id, 'nome': obj.nome})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+            
+    elif request.method == 'DELETE':
+        try:
+            data = json.loads(request.body)
+            obj_id = data.get('id')
+            if tipo == 'setor':
+                Setor.objects.filter(id=obj_id, empresa=empresa).delete()
+            elif tipo == 'cargo':
+                Cargo.objects.filter(id=obj_id, empresa=empresa).delete()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False})
+
+@login_required
+def api_criar_tipo_exame(request):
+    if request.method == "POST":
+        from .forms import TipoExameForm 
+        form = TipoExameForm(request.POST)
+        if form.is_valid():
+            exame = form.save(commit=False)
+            exame.empresa = request.user.perfil.empresa
+            exame.save()
+            return JsonResponse({'success': True, 'id': exame.id, 'nome': str(exame)})
+    return JsonResponse({'success': False})
+
+# Views placeholder para completar imports do urls.py (se faltar alguma)
+@login_required
+def deletar_quimico(request, pk): return redirect('dashboard_quimicos')
+@login_required
+def deletar_risco(request, id): return redirect('dashboard_quimicos')
+@login_required
+def lista_advertencias(request): return redirect('dashboard')
+
+@login_required
+def novo_quimico(request):
+    empresa = request.user.perfil.empresa
+    if request.method == 'POST':
+        form = ProdutoQuimicoForm(empresa.id, request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.empresa = empresa
+            obj.save()
+            return redirect('dashboard_quimicos')
+    else:
+        form = ProdutoQuimicoForm(empresa.id)
+    return render(request, 'generic_form.html', {'form': form, 'titulo': 'Novo Produto Químico'})
+
+@login_required
+def editar_quimico(request, id):
+    empresa = request.user.perfil.empresa
+    prod = get_object_or_404(ProdutoQuimico, pk=id, empresa=empresa)
+    if request.method == 'POST':
+        form = ProdutoQuimicoForm(empresa.id, request.POST, request.FILES, instance=prod)
         if form.is_valid():
             form.save()
-            # Redireciona de volta para a aba de exames do prontuário
-            return redirect('detalhe_funcionario', id=funcionario_id)
-            
-    # Se for GET ou inválido, redireciona para o detalhe (comportamento de modal)
-    return redirect('detalhe_funcionario', id=funcionario_id)
+            return redirect('dashboard_quimicos')
+    else:
+        form = ProdutoQuimicoForm(empresa.id, instance=prod)
+    return render(request, 'generic_form.html', {'form': form, 'titulo': 'Editar Químico'})
+
+@login_required
+def criar_risco(request):
+    empresa = request.user.perfil.empresa
+    if request.method == 'POST':
+        form = RiscoOcupacionalForm(empresa.id, request.POST)
+        if form.is_valid():
+            risco = form.save(commit=False)
+            risco.empresa = empresa
+            risco.save()
+            return redirect('dashboard_quimicos')
+    return redirect('dashboard_quimicos')
+
+@login_required
+def associar_risco_setor(request, setor_id):
+    empresa = request.user.perfil.empresa
+    setor = get_object_or_404(Setor, pk=setor_id, empresa=empresa)
+    
+    if request.method == 'POST':
+        riscos_ids = request.POST.getlist('riscos')
+        setor.riscos.clear()
+        for r_id in riscos_ids:
+            r = get_object_or_404(RiscoOcupacional, pk=r_id, empresa=empresa)
+            setor.riscos.add(r)
+        setor.save()
+        
+    return redirect('dashboard_quimicos')
+
+
+@login_required
+def config_hospitais(request):
+    empresa = request.user.perfil.empresa
+    tipos = TipoEspecialidade.objects.filter(empresa=empresa)
+    form = TipoEspecialidadeForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        obj.empresa = empresa
+        obj.save()
+        return redirect('config_hospitais')
+    return render(request, 'hospitais/gerenciar_especialidades.html', {'tipos': tipos, 'form': form})
+
+@login_required
+def dashboard_hospitais(request):
+    empresa = request.user.perfil.empresa
+    hospitais = Hospital.objects.filter(empresa=empresa)
+    return render(request, 'hospitais/dashboard.html', {'hospitais': hospitais})
+
+@login_required
+def novo_hospital(request):
+    empresa = request.user.perfil.empresa
+    if request.method == 'POST':
+        form = HospitalForm(empresa.id, request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.empresa = empresa
+            obj.save()
+            return redirect('dashboard_hospitais')
+    else:
+        form = HospitalForm(empresa.id)
+    return render(request, 'hospitais/form.html', {'form': form})

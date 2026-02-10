@@ -59,7 +59,7 @@
     /* Inputs e Avatar */
     .avatar-upload {
         display: flex; align-items: center; gap: 24px; padding: 1.5rem;
-        background: #f8fafc; border-radius: 16px; border: 1px dashed #cbd5e1; margin-bottom: 2rem;
+        background: #f8fafc; border-radius: 166px; border: 1px dashed #cbd5e1; margin-bottom: 2rem;
     }
     .avatar-preview { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     
@@ -85,6 +85,15 @@
     .btn-submit { background: var(--success-color); color: white; }
     .btn-submit:hover { background: #16a34a; }
     .hidden { display: none !important; }
+
+    /* Estilo para a Inteligência da Matriz */
+    .ai-suggestion {
+        background: #f0f7ff;
+        border: 1px solid #bae6fd;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
 </style>
 
 <div class="container-fluid">
@@ -162,6 +171,14 @@
                 </div>
 
                 <div class="step-content" id="step2">
+                    <div id="alertaMatriz" class="ai-suggestion d-none">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-brain text-primary me-2"></i>
+                            <span class="fw-bold text-primary">Sugestão da Matriz SST</span>
+                        </div>
+                        <p id="textoMatriz" class="small mb-0 text-dark"></p>
+                    </div>
+
                     <div class="text-center mb-4">
                         <h4 class="fw-bold text-dark">Dados Contratuais</h4>
                     </div>
@@ -238,13 +255,45 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script>
-    // Inicialização
     $(document).ready(function(){
         $('[data-mask="000.000.000-00"]').mask('000.000.000-00');
         $('#cep').mask('00000-000');
         var SPMaskBehavior = function (val) { return val.replace(/\D/g, '').length === 11 ? '(00) 0 0000-0000' : '(00) 0000-00009'; },
             spOptions = { onKeyPress: function(val, e, field, options) { field.mask(SPMaskBehavior.apply({}, arguments), options); } };
         $('#telefone').mask(SPMaskBehavior, spOptions);
+
+        // INTEGRAÇÃO MATRIZ SST
+        const setorSelect = document.querySelector('#id_setor');
+        const cargoInput = document.querySelector('#id_cargo');
+        const alertaMatriz = document.querySelector('#alertaMatriz');
+        const textoMatriz = document.querySelector('#textoMatriz');
+
+        function verificarMatriz() {
+            const setorId = setorSelect.value;
+            const cargo = cargoInput.value;
+
+            if (setorId && cargo.length > 2) {
+                fetch(`/api/consulta-matriz/?setor_id=${setorId}&cargo=${cargo}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.encontrado) {
+                            alertaMatriz.classList.remove('d-none');
+                            let msg = `Com base na Matriz configurada, este funcionário deverá receber: <strong>${data.epis.join(', ')}</strong>`;
+                            if(data.riscos.length > 0) {
+                                msg += `<br>Riscos associados: <em>${data.riscos.join(', ')}</em>`;
+                            }
+                            textoMatriz.innerHTML = msg;
+                        } else {
+                            alertaMatriz.classList.add('d-none');
+                        }
+                    });
+            }
+        }
+
+        if(setorSelect && cargoInput) {
+            setorSelect.addEventListener('change', verificarMatriz);
+            cargoInput.addEventListener('blur', verificarMatriz);
+        }
     });
 
     // Wizard Logic
@@ -300,24 +349,21 @@
     });
 
     // ViaCEP
-    const cepInput = document.getElementById('cep');
-    if(cepInput) {
-        cepInput.addEventListener('blur', function() {
-            let cep = this.value.replace(/\D/g, '');
-            if(cep.length === 8) {
-                document.getElementById('loadingCep').style.display = 'inline-block';
-                fetch(`https://viacep.com.br/ws/${cep}/json/`).then(r=>r.json()).then(d=>{
-                    document.getElementById('loadingCep').style.display='none';
-                    if(!d.erro){
-                        document.getElementById('logradouro').value=d.logradouro;
-                        document.getElementById('bairro').value=d.bairro;
-                        document.getElementById('cidade').value=d.localidade;
-                        document.getElementById('uf').value=d.uf;
-                        document.getElementById('numero').focus();
-                    } else alert("CEP não encontrado");
-                }).catch(()=>{ document.getElementById('loadingCep').style.display='none'; alert("Erro no CEP"); });
-            }
-        });
+    function consultaCep() {
+        let cep = document.getElementById('cep').value.replace(/\D/g, '');
+        if(cep.length === 8) {
+            document.getElementById('loadingCep').style.display = 'inline-block';
+            fetch(`https://viacep.com.br/ws/${cep}/json/`).then(r=>r.json()).then(d=>{
+                document.getElementById('loadingCep').style.display='none';
+                if(!d.erro){
+                    document.getElementById('logradouro').value=d.logradouro;
+                    document.getElementById('bairro').value=d.bairro;
+                    document.getElementById('cidade').value=d.localidade;
+                    document.getElementById('uf').value=d.uf;
+                    document.getElementById('numero').focus();
+                } else alert("CEP não encontrado");
+            }).catch(()=>{ document.getElementById('loadingCep').style.display='none'; alert("Erro no CEP"); });
+        }
     }
 
     // Toggle Motivo

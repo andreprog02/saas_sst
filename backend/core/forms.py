@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.forms import inlineformset_factory
 from .models import ArCondicionado, EquipamentoNR13
+from .models import Setor, Cargo, MatrizRiscoEPI
 
 # Importação única e completa de todos os modelos
 from .models import (
@@ -10,7 +11,7 @@ from .models import (
     Vacina, ControleVacina, EntregaEPI, TreinamentoFuncionario,
     Advertencia, TipoAdvertencia, Afastamento, AcidenteTrabalho,
     Extintor, InspecaoExtintor, Equipamento, InspecaoEquipamento,
-    ProdutoQuimico, Hospital, TipoEspecialidade, Exame
+    ProdutoQuimico, Hospital, TipoEspecialidade, Exame, MatrizRiscoEPI, TipoExame, 
 )
 
 
@@ -627,3 +628,66 @@ class EquipamentoNR13Form(forms.ModelForm):
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'laudo_tecnico': forms.FileInput(attrs={'class': 'form-control'}),
         }
+
+class TipoExameForm(forms.ModelForm):
+    class Meta:
+        model = TipoExame
+        fields = ['nome', 'codigo_tuss', 'descricao']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Audiometria'}),
+            'codigo_tuss': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 40101010'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+# Formulário para Gerenciar Setores
+class SetorForm(forms.ModelForm):
+    class Meta:
+        model = Setor
+        fields = ['nome', 'responsavel', 'descricao']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'responsavel': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+# Formulário para Gerenciar Cargos
+class CargoForm(forms.ModelForm):
+    class Meta:
+        model = Cargo
+        fields = ['nome', 'cbo', 'descricao']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'cbo': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+# Formulário da Matriz (Atualizado)
+class MatrizRiscoEPIForm(forms.ModelForm):
+    class Meta:
+        model = MatrizRiscoEPI
+        fields = ['setor', 'cargo', 'riscos', 'epis_obrigatorios', 'nrs', 'vacinas', 'exames']
+        widgets = {
+            # Agora são Selects (Dropdowns)
+            'setor': forms.Select(attrs={'class': 'form-select'}),
+            'cargo': forms.Select(attrs={'class': 'form-select'}),
+            
+            'riscos': forms.CheckboxSelectMultiple(),
+            'epis_obrigatorios': forms.CheckboxSelectMultiple(),
+            'nrs': forms.CheckboxSelectMultiple(),
+            'vacinas': forms.CheckboxSelectMultiple(),
+            'exames': forms.CheckboxSelectMultiple(),
+        }
+
+    def __init__(self, empresa_id, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa_id:
+            # Filtra apenas dados da empresa
+            self.fields['setor'].queryset = Setor.objects.filter(empresa_id=empresa_id)
+            self.fields['cargo'].queryset = Cargo.objects.filter(empresa_id=empresa_id)
+            self.fields['epis_obrigatorios'].queryset = TipoEPI.objects.filter(empresa_id=empresa_id)
+            self.fields['vacinas'].queryset = Vacina.objects.filter(empresa_id=empresa_id)
+        
+        # Dados Globais
+        self.fields['nrs'].queryset = NormaRegulamentadora.objects.all().order_by('codigo')
+        self.fields['riscos'].queryset = RiscoOcupacional.objects.all().order_by('tipo', 'agente')
+        self.fields['exames'].queryset = TipoExame.objects.all().order_by('nome')
