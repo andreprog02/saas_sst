@@ -50,10 +50,10 @@ class Command(BaseCommand):
                 'Torção de tronco', 'Flexão repetida de coluna', 'Levantamento manual de carga',
                 'Transporte manual de carga', 'Empurrar e puxar cargas',
                 'Movimentos repetitivos de membros superiores', 'Movimentos repetitivos de membros inferiores',
-                'Esforço físico intenso', 'Ritmo excessivo de trabalho', 'Metas abusivas',
+                'Esforço físico intenso', 'Ritmo excessivo de trabalho',
                 'Jornada prolongada', 'Trabalho noturno', 'Turnos alternados',
                 'Monotonia', 'Repetitividade', 'Falta de pausas', 'Estresse ocupacional',
-                'Pressão psicológica', 'Assédio moral', 'Trabalho isolado',
+                'Trabalho isolado',
                 'Atenção constante', 'Uso excessivo de computador', 'Trabalho estático prolongado'
             ]),
 

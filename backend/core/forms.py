@@ -54,63 +54,51 @@ class FuncionarioForm(forms.ModelForm):
     class Meta:
         model = Funcionario
         fields = [
-            'foto',
-            'nome', 'cpf', 'rg', 'matricula',           
-            'data_nascimento', 'email', 'telefone',
-            'cep', 'endereco', 'numero', 'complemento',
-            'bairro', 'cidade', 'estado',
-            'empresa', 'matricula', 'cargo', 'funcao', 
-            'setor', 'turno', 'data_admissao', 'supervisor',
-            # --- NOVOS CAMPOS DE SAÚDE ---
+            'nome', 'cpf', 'rg', 'data_nascimento', 'email', 'telefone',
+            'cep', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'complemento',
+            'matricula', 'setor', 'cargo', 'funcao', 'data_admissao', 'turno', 'supervisor',
             'tipo_sanguineo', 'alergias', 'medicamentos', 'observacoes_saude',
-            # -----------------------------
-            'situacao', 'motivo_afastamento'                                  
+            'situacao', 'motivo_afastamento', 'foto'
         ]
         widgets = {
-            # ... (Widgets anteriores de Pessoal e Endereço mantidos) ...
-            'nome': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nome completo'}),
+            'data_nascimento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_admissao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            
+            # Agora ambos são Selects com classe Bootstrap
+            'setor': forms.Select(attrs={'class': 'form-select'}),
+            'cargo': forms.Select(attrs={'class': 'form-select'}), 
+            
+            'turno': forms.Select(attrs={'class': 'form-select'}),
+            'situacao': forms.Select(attrs={'class': 'form-select'}),
+            'foto': forms.FileInput(attrs={'class': 'form-control'}),
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
             'cpf': forms.TextInput(attrs={'class': 'form-control', 'data-mask': '000.000.000-00'}),
             'rg': forms.TextInput(attrs={'class': 'form-control'}),
-            'data_nascimento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
-            'telefone': forms.TextInput(attrs={'class': 'form-control', 'id': 'telefone'}),
-
-            'cep': forms.TextInput(attrs={'class': 'form-control', 'id': 'cep', 'data-mask': '00000-000'}),
+            'telefone': forms.TextInput(attrs={'class': 'form-control'}),
+            'cep': forms.TextInput(attrs={'class': 'form-control', 'id': 'cep'}),
             'endereco': forms.TextInput(attrs={'class': 'form-control', 'id': 'logradouro'}),
             'numero': forms.TextInput(attrs={'class': 'form-control', 'id': 'numero'}),
-            'complemento': forms.TextInput(attrs={'class': 'form-control', 'id': 'complemento'}),
             'bairro': forms.TextInput(attrs={'class': 'form-control', 'id': 'bairro'}),
             'cidade': forms.TextInput(attrs={'class': 'form-control', 'id': 'cidade'}),
             'estado': forms.TextInput(attrs={'class': 'form-control', 'id': 'uf'}),
-
-            # Profissional
-            'empresa': forms.Select(attrs={'class': 'form-select'}),
+            'complemento': forms.TextInput(attrs={'class': 'form-control'}),
             'matricula': forms.TextInput(attrs={'class': 'form-control'}),
-            'cargo': forms.TextInput(attrs={'class': 'form-control'}),
             'funcao': forms.TextInput(attrs={'class': 'form-control'}),
-            'setor': forms.Select(attrs={'class': 'form-select'}),
-            'turno': forms.Select(attrs={'class': 'form-select'}),
             'supervisor': forms.TextInput(attrs={'class': 'form-control'}),
-            'data_admissao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            
-            # --- SAÚDE (Widgets) ---
-            'tipo_sanguineo': forms.Select(attrs={'class': 'form-select'}),
-            'alergias': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Liste alergias a medicamentos ou alimentos...'}),
-            'medicamentos': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Uso contínuo...'}),
+            'tipo_sanguineo': forms.TextInput(attrs={'class': 'form-control'}),
+            'alergias': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'medicamentos': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'observacoes_saude': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            
-            # Status
-            'situacao': forms.Select(attrs={'class': 'form-select'}),
             'motivo_afastamento': forms.TextInput(attrs={'class': 'form-control'}),
-            'foto': forms.FileInput(attrs={'class': 'd-none', 'id': 'inputFoto'}),
         }
 
     def __init__(self, empresa_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if empresa_id:
+            # Filtra Setores e Cargos apenas da empresa logada
             self.fields['setor'].queryset = Setor.objects.filter(empresa_id=empresa_id)
-            self.fields['empresa'].queryset = Empresa.objects.filter(id=empresa_id)
-            self.fields['empresa'].initial = empresa_id
+            self.fields['cargo'].queryset = Cargo.objects.filter(empresa_id=empresa_id)
             
 # --- SETORES ---
 

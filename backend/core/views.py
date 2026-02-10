@@ -148,27 +148,116 @@ def detalhe_funcionario(request, id):
     empresa = request.user.perfil.empresa
     funcionario = get_object_or_404(Funcionario, pk=id, empresa=empresa)
     
-    # Listagens
-    exames = funcionario.exames.all().order_by('-data_realizacao')
-    vacinas = funcionario.vacinas.all().order_by('data_proximo_reforco')
-    epis = funcionario.epis_entregues.all().order_by('-data_entrega')
-    treinamentos = funcionario.treinamentos.all().order_by('-data_realizacao')
-    advertencias = funcionario.advertencias.all().order_by('-data_incidente')
-    afastamentos = funcionario.afastamentos.all().order_by('-data_inicio')
-    acidentes = funcionario.acidentes.all().order_by('-data_acidente')
-    
-    # Formulários para os Modais
+    # 1. Buscar Matriz
+    matriz = MatrizRiscoEPI.objects.filter(
+        empresa=empresa, 
+        setor=funcionario.setor, 
+        cargo=funcionario.cargo
+    ).first()
+
+    # --- LÓGICA DE CRUZAMENTO (Matriz vs Histórico) ---
+
+    # A. EXAMES
+    status_exames = []
+    if matriz:
+        for exame_obrigatorio in matriz.exames.all():
+            ultimo = funcionario.exames.filter(tipo__iexact=exame_obrigatorio.nome).order_by('-data_realizacao').first()
+            status = 'PENDENTE'
+            vencimento = None
+            if ultimo:
+                status = 'OK'
+                if ultimo.data_vencimento:
+                    vencimento = ultimo.data_vencimento
+                    if vencimento < date.today():
+                        status = 'VENCIDO'
+            
+            status_exames.append({
+                'nome': exame_obrigatorio.nome,
+                'realizado': ultimo.data_realizacao if ultimo else None,
+                'vencimento': vencimento,
+                'status': status,
+                'arquivo': ultimo.arquivo if ultimo else None
+            })
+
+    # B. VACINAS
+    status_vacinas = []
+    if matriz:
+        for vacina_obrigatoria in matriz.vacinas.all():
+            ultimo = funcionario.vacinas.filter(vacina=vacina_obrigatoria).order_by('-data_aplicacao').first()
+            status = 'PENDENTE'
+            proxima = None
+            if ultimo:
+                status = 'OK'
+                proxima = ultimo.data_proximo_reforco
+                if proxima and proxima < date.today():
+                    status = 'VENCIDO'
+            
+            status_vacinas.append({
+                'nome': vacina_obrigatoria.nome,
+                'realizado': ultimo.data_aplicacao if ultimo else None,
+                'proxima': proxima,
+                'status': status,
+                'comprovante': ultimo.comprovante if ultimo else None
+            })
+
+    # C. NRs
+    status_nrs = []
+    if matriz:
+        for nr in matriz.nrs.all():
+            nome_display = f"{nr.codigo} - {nr.titulo}"
+            # Busca flexível pelo código da NR
+            ultimo = funcionario.treinamentos.filter(nome_treinamento__icontains=nr.codigo).order_by('-data_realizacao').first()
+            
+            status = 'PENDENTE'
+            validade = None
+            if ultimo:
+                status = 'OK'
+                validade = ultimo.data_validade
+                if validade and validade < date.today():
+                    status = 'VENCIDO'
+
+            status_nrs.append({
+                'nome': nome_display,
+                'realizado': ultimo.data_realizacao if ultimo else None,
+                'validade': validade,
+                'status': status,
+                'certificado': ultimo.certificado if ultimo else None
+            })
+
+    # D. RISCOS
+    riscos_agrupados = {'FISICO': [], 'QUIMICO': [], 'BIOLOGICO': [], 'ERGONOMICO': [], 'ACIDENTE': []}
+    if matriz:
+        for risco in matriz.riscos.all():
+            riscos_agrupados[risco.tipo].append(risco)
+
+    # --- DADOS PARA OS COMBOBOXES DOS MODAIS ---
+    # Carregamos todas as opções possíveis para facilitar o cadastro
+    todas_vacinas = Vacina.objects.filter(empresa=empresa)
+    todos_exames_lista = TipoExame.objects.filter(empresa=empresa)
+    todas_nrs_lista = NormaRegulamentadora.objects.all()
+
     context = {
         'funcionario': funcionario,
-        'exames': exames,
-        'vacinas': vacinas,
-        'epis': epis,
-        'treinamentos': treinamentos,
-        'advertencias': advertencias,
-        'afastamentos': afastamentos,
-        'acidentes': acidentes,
+        'matriz': matriz,
         
-        # Forms Vazios
+        # Listas Processadas (Status)
+        'status_exames': status_exames,
+        'status_vacinas': status_vacinas,
+        'status_nrs': status_nrs,
+        'riscos_agrupados': riscos_agrupados,
+        
+        # Listas para Combobox (Sugestões)
+        'todas_vacinas': todas_vacinas,
+        'todos_exames_lista': todos_exames_lista,
+        'todas_nrs_lista': todas_nrs_lista,
+
+        # Históricos Gerais
+        'epis': funcionario.epis_entregues.all().order_by('-data_entrega'),
+        'advertencias': funcionario.advertencias.all().order_by('-data_incidente'),
+        'afastamentos': funcionario.afastamentos.all().order_by('-data_inicio'),
+        'acidentes': funcionario.acidentes.all().order_by('-data_acidente'),
+        
+        # Forms
         'form_vacina': ControleVacinaForm(empresa.id),
         'form_epi': EntregaEPIForm(empresa.id),
         'form_treinamento': TreinamentoFuncionarioForm(),
@@ -178,7 +267,6 @@ def detalhe_funcionario(request, id):
         'form_exame': ExameForm(), 
     }
     return render(request, 'funcionario_detalhe.html', context)
-
 # --- AÇÕES DO PRONTUÁRIO (VIEWS DE REGISTRO) ---
 
 @login_required

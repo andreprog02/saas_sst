@@ -125,8 +125,12 @@ class Funcionario(models.Model):
     estado = models.CharField(max_length=2, null=True, blank=True)
 
     matricula = models.CharField(max_length=20, null=True, blank=True)
-    cargo = models.CharField(max_length=100) # Texto legado
-    funcao = models.CharField(max_length=100, null=True, blank=True)
+    
+    # --- MUDANÇA AQUI: Cargo agora é um link para a tabela Cargo ---
+    cargo = models.ForeignKey(Cargo, on_delete=models.SET_NULL, null=True, verbose_name="Cargo")
+    # ---------------------------------------------------------------
+    
+    funcao = models.CharField(max_length=100, null=True, blank=True, verbose_name="Função Específica")
     setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True)
     
     turno = models.CharField(max_length=20, choices=OPCOES_TURNO, default='ADM')
@@ -144,7 +148,15 @@ class Funcionario(models.Model):
     ativo = models.BooleanField(default=True)
 
     def __str__(self): return self.nome
-
+        
+    @property
+    def cor_status(self):
+        if self.situacao == 'ATIVO': return 'success'
+        if self.situacao == 'FERIAS': return 'info'
+        if self.situacao == 'AFASTADO': return 'warning'
+        return 'secondary'
+    
+    
 # ==============================================================================
 # 5. EPIs (COM OS CAMPOS QUE O FORMULÁRIO PEDE)
 # ==============================================================================
