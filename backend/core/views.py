@@ -717,18 +717,22 @@ def lista_setores(request):
     setores = Setor.objects.filter(empresa=empresa).order_by('nome')
     return render(request, 'setores/lista.html', {'setores': setores})
 
-@login_required
+login_required
 def novo_setor(request):
     empresa = request.user.perfil.empresa
     if request.method == 'POST':
-        form = SetorForm(empresa, request.POST)
+        # ANTES ERA: form = SetorForm(empresa, request.POST) -> ISSO DAVA ERRO
+        # CORRETO:
+        form = SetorForm(request.POST) 
         if form.is_valid():
             setor = form.save(commit=False)
             setor.empresa = empresa
             setor.save()
             return redirect('lista_setores')
     else:
-        form = SetorForm(empresa)
+        # ANTES ERA: form = SetorForm(empresa)
+        # CORRETO:
+        form = SetorForm()
     return render(request, 'generic_form.html', {'form': form, 'titulo': 'Novo Setor'})
 
 @login_required
@@ -737,12 +741,14 @@ def editar_setor(request, id):
     setor = get_object_or_404(Setor, pk=id, empresa=empresa)
     
     if request.method == 'POST':
-        form = SetorForm(empresa, request.POST, instance=setor)
+        # CORRETO (Sem 'empresa'):
+        form = SetorForm(request.POST, instance=setor)
         if form.is_valid():
             form.save()
             return redirect('lista_setores')
     else:
-        form = SetorForm(empresa, instance=setor)
+        # CORRETO (Sem 'empresa'):
+        form = SetorForm(instance=setor)
     return render(request, 'generic_form.html', {'form': form, 'titulo': f'Editar: {setor.nome}'})
 
 @login_required
