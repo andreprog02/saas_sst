@@ -13,22 +13,23 @@
     .step-content { display: none; animation: fadeIn 0.4s; }
     .step-content.active { display: block; }
     
-    .stepper-wrapper { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; padding: 0 20px; }
+    /* Ajustado para 6 passos */
+    .stepper-wrapper { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; padding: 0 10px; }
     .stepper-wrapper::before { content: ""; position: absolute; top: 15px; left: 0; width: 100%; height: 2px; background: #e2e8f0; z-index: 0; }
-    .stepper-item { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 20%; }
-    .step-counter { width: 35px; height: 35px; border-radius: 50%; background: #fff; border: 2px solid #cbd5e1; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #64748b; margin-bottom: 6px; transition: all 0.3s; }
-    .step-name { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; text-align: center; }
+    .stepper-item { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; flex: 1; }
+    .step-counter { width: 35px; height: 35px; border-radius: 50%; background: #fff; border: 2px solid #cbd5e1; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #64748b; margin-bottom: 6px; transition: all 0.3s; font-size: 0.9rem; }
+    .step-name { font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; text-align: center; }
     
     .stepper-item.active .step-counter { background: #2563eb; border-color: #2563eb; color: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2); }
     .stepper-item.active .step-name { color: #2563eb; }
     .stepper-item.completed .step-counter { background: #10b981; border-color: #10b981; color: #fff; }
 
-    /* --- LISTAS --- */
-    .custom-check-list { max-height: 350px; overflow-y: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; }
-    .check-item { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; transition: background 0.2s; }
+    /* --- LISTAS (CHECKBOXES) --- */
+    .custom-check-list { max-height: 250px; overflow-y: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; }
+    .check-item { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; transition: background 0.2s; font-size: 0.9rem; }
     .check-item:hover { background-color: #f8fafc; }
     .check-item:last-child { border-bottom: none; }
-    .check-item input[type="checkbox"] { transform: scale(1.4); cursor: pointer; margin-right: 15px; accent-color: #2563eb; }
+    .check-item input[type="checkbox"] { transform: scale(1.2); cursor: pointer; margin-right: 10px; accent-color: #2563eb; }
     .check-item label { cursor: pointer; width: 100%; margin-bottom: 0; font-weight: 500; color: #334155; }
 
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -37,9 +38,14 @@
 <div class="container-fluid p-4">
     
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="fw-bold text-dark"><i class="fas fa-sitemap text-primary me-2"></i> Matriz de Riscos & Exames</h2>
-            <p class="text-muted mb-0">Configure os requisitos do PGR e PCMSO por função.</p>
+        <div class="d-flex align-items-center gap-4">
+            <div>
+                <h2 class="fw-bold text-dark"><i class="fas fa-sitemap text-primary me-2"></i> Matriz de Riscos & Exames</h2>
+                <p class="text-muted mb-0">Configure os requisitos do PGR e PCMSO por função.</p>
+            </div>
+            <a href="{% url 'pgr_empresa' %}" target="_blank" class="btn btn-success shadow-sm d-flex align-items-center" style="height: fit-content;">
+                <i class="fas fa-file-contract me-2"></i> Visualizar PGR (Inventário)
+            </a>
         </div>
         
         <ul class="nav nav-pills bg-white p-1 rounded shadow-sm border" id="pills-tab" role="tablist">
@@ -54,7 +60,7 @@
         <div class="tab-pane fade show active" id="tab-matriz">
             <div class="d-flex justify-content-end mb-3">
                 <button class="btn btn-primary btn-lg shadow-sm" onclick="abrirModalWizard()">
-                    <i class="fas fa-plus-circle me-2"></i> Criar Vínculo
+                    <i class="fas fa-plus-circle me-2"></i> Criar Vínculo (Setor x Cargo)
                 </button>
             </div>
 
@@ -74,9 +80,13 @@
                         <div class="card-body">
                             <div class="d-flex flex-wrap gap-2 mb-3">
                                 <span class="badge bg-danger p-2"><i class="fas fa-biohazard me-1"></i> {{ regra.riscos.count }} Riscos</span>
+                                <span class="badge bg-success p-2"><i class="fas fa-hard-hat me-1"></i> {{ regra.epis_obrigatorios.count }} EPIs</span>
                                 <span class="badge bg-warning text-dark p-2"><i class="fas fa-book me-1"></i> {{ regra.nrs.count }} NRs</span>
                                 <span class="badge bg-info text-dark p-2"><i class="fas fa-syringe me-1"></i> {{ regra.vacinas.count }} Vacinas</span>
-                                <span class="badge bg-success p-2"><i class="fas fa-file-medical me-1"></i> {{ regra.exames.count }} Exames</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-light text-dark border"><i class="fas fa-file-medical me-1"></i> {{ regra.exames.count }} Exames</span>
+                                <small class="text-muted fst-italic">Herança + Específicos</small>
                             </div>
                         </div>
                     </div>
@@ -93,16 +103,26 @@
         <div class="tab-pane fade" id="tab-setores">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white py-3 d-flex justify-content-between">
-                    <h5 class="fw-bold mb-0">Setores</h5>
+                    <div>
+                        <h5 class="fw-bold mb-0">Gerenciar Setores</h5>
+                        <small class="text-muted">Defina aqui os riscos e EPIs padrão de cada ambiente.</small>
+                    </div>
                     <button class="btn btn-outline-primary btn-sm" onclick="abrirModalSetor()">+ Novo Setor</button>
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
-                        <thead class="bg-light"><tr><th class="ps-4">Nome</th><th>Ações</th></tr></thead>
+                        <thead class="bg-light"><tr><th class="ps-4">Nome</th><th>Responsável</th><th>Padrões Definidos</th><th>Ações</th></tr></thead>
                         <tbody>
                             {% for setor in setores %}
                             <tr>
                                 <td class="ps-4 fw-bold">{{ setor.nome }}</td>
+                                <td>{{ setor.responsavel|default:"-" }}</td>
+                                <td>
+                                    {% if setor.riscos.exists %}<span class="badge bg-danger me-1">Riscos</span>{% endif %}
+                                    {% if setor.epis.exists %}<span class="badge bg-success me-1">EPIs</span>{% endif %}
+                                    {% if setor.exames.exists %}<span class="badge bg-info">Exames</span>{% endif %}
+                                    {% if not setor.riscos.exists and not setor.epis.exists and not setor.exames.exists %}<span class="text-muted small">Nenhum</span>{% endif %}
+                                </td>
                                 <td><i class="fas fa-trash text-muted action-icon" onclick="deletarItem('setor', {{ setor.id }})"></i></td>
                             </tr>
                             {% endfor %}
@@ -115,7 +135,7 @@
         <div class="tab-pane fade" id="tab-cargos">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white py-3 d-flex justify-content-between">
-                    <h5 class="fw-bold mb-0">Funções</h5>
+                    <h5 class="fw-bold mb-0">Funções / Cargos</h5>
                     <button class="btn btn-outline-primary btn-sm" onclick="abrirModalCargo()">+ Nova Função</button>
                 </div>
                 <div class="card-body p-0">
@@ -138,11 +158,82 @@
 </div>
 
 <div class="modal fade" id="modalSetor" tabindex="-1" style="z-index: 1060;">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <form class="modal-content" onsubmit="salvarEstrutura(event, 'setor')">
-            <div class="modal-header"><h5>Novo Setor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">{{ form_setor.as_p }}</div>
-            <div class="modal-footer"><button type="submit" class="btn btn-primary w-100">Salvar</button></div>
+            <div class="modal-header bg-light">
+                <div>
+                    <h5 class="fw-bold mb-0">Gerenciar Setor & Padrões</h5>
+                    <small class="text-muted">Configure o que é comum a TODOS neste setor.</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Nome do Setor</label>
+                        {{ form_setor.nome }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Responsável</label>
+                        {{ form_setor.responsavel }}
+                    </div>
+                    <div class="col-12 mt-2">
+                        <label class="form-label">Descrição</label>
+                        {{ form_setor.descricao }}
+                    </div>
+                </div>
+
+                <hr>
+                <div class="alert alert-info py-2 small">
+                    <i class="fas fa-info-circle me-1"></i> Itens marcados abaixo serão copiados automaticamente para qualquer <strong>NOVO</strong> cargo vinculado a este setor.
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="fw-bold small mb-2 text-danger"><i class="fas fa-biohazard me-1"></i> Riscos Globais (Ambiente)</label>
+                        <input type="text" class="form-control form-control-sm mb-1" placeholder="Filtrar..." onkeyup="filtrar(this, 'setorRiscos')">
+                        <div class="custom-check-list p-2" id="setorRiscos" style="height: 180px;">
+                            {{ form_setor.riscos }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="fw-bold small mb-2 text-success"><i class="fas fa-hard-hat me-1"></i> EPIs Básicos</label>
+                        <input type="text" class="form-control form-control-sm mb-1" placeholder="Filtrar..." onkeyup="filtrar(this, 'setorEPIs')">
+                        <div class="custom-check-list p-2" id="setorEPIs" style="height: 180px;">
+                            {% for checkbox in form_setor.epis %}
+                                <div class="check-item">
+                                    {{ checkbox.tag }}
+                                    <label for="{{ checkbox.id_for_label }}" class="ms-2">
+                                        {{ checkbox.choice_label }}
+                                    </label>
+                                </div>
+                            {% empty %}
+                                <div class="text-center text-muted mt-5">
+                                    <small>Nenhum EPI encontrado.</small>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="fw-bold small mb-2 text-info"><i class="fas fa-syringe me-1"></i> Vacinas Padrão</label>
+                        <div class="custom-check-list p-2" style="height: 120px;">
+                            {{ form_setor.vacinas }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="fw-bold small mb-2 text-primary"><i class="fas fa-notes-medical me-1"></i> Exames Padrão</label>
+                        <div class="custom-check-list p-2" style="height: 120px;">
+                            {{ form_setor.exames }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="submit" class="btn btn-primary px-4">Salvar Setor</button>
+            </div>
         </form>
     </div>
 </div>
@@ -174,8 +265,13 @@
                         <div class="stepper-item active" id="step-indicator-1"><div class="step-counter">1</div><div class="step-name">Estrutura</div></div>
                         <div class="stepper-item" id="step-indicator-2"><div class="step-counter">2</div><div class="step-name">Normas</div></div>
                         <div class="stepper-item" id="step-indicator-3"><div class="step-counter">3</div><div class="step-name">Riscos</div></div>
-                        <div class="stepper-item" id="step-indicator-4"><div class="step-counter">4</div><div class="step-name">Vacinas</div></div>
-                        <div class="stepper-item" id="step-indicator-5"><div class="step-counter">5</div><div class="step-name">Exames</div></div>
+                        <div class="stepper-item" id="step-indicator-4"><div class="step-counter">4</div><div class="step-name">EPIs</div></div>
+                        <div class="stepper-item" id="step-indicator-5"><div class="step-counter">5</div><div class="step-name">Vacinas</div></div>
+                        <div class="stepper-item" id="step-indicator-6"><div class="step-counter">6</div><div class="step-name">Exames</div></div>
+                    </div>
+
+                    <div class="alert alert-warning small mb-3">
+                        <i class="fas fa-lightbulb me-1"></i> <strong>Dica:</strong> Ao selecionar um Setor, os riscos e EPIs configurados nele são importados. Adicione aqui os itens <strong>específicos da função</strong>.
                     </div>
 
                     <div class="step-content active" id="step-1">
@@ -201,56 +297,75 @@
                                     </button>
                                 </div>
                             </div>
-
                         </div>
                     </div>
 
                     <div class="step-content" id="step-2">
+                        <h5 class="fw-bold mb-3"><i class="fas fa-book me-2"></i> Normas Regulamentadoras</h5>
                         <input type="text" class="form-control mb-2" placeholder="Buscar NR..." onkeyup="filtrar(this, 'listaNRs')">
                         <div class="custom-check-list" id="listaNRs">
                             {% for checkbox in form.nrs %}
-                            <div class="check-item">{{ checkbox.tag }} <label for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label></div>
+                            <div class="check-item">{{ checkbox.tag }} <label for="{{ checkbox.id_for_label }}" class="ms-2">{{ checkbox.choice_label }}</label></div>
                             {% endfor %}
                         </div>
                     </div>
 
                     <div class="step-content" id="step-3">
+                        <h5 class="fw-bold mb-3 text-danger"><i class="fas fa-biohazard me-2"></i> Riscos Ocupacionais</h5>
                         <input type="text" class="form-control mb-2" placeholder="Buscar Risco..." onkeyup="filtrar(this, 'listaRiscos')">
                         <div class="custom-check-list" id="listaRiscos">
                             {% for checkbox in form.riscos %}
-                            <div class="check-item">{{ checkbox.tag }} <label for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label></div>
+                            <div class="check-item">{{ checkbox.tag }} <label for="{{ checkbox.id_for_label }}" class="ms-2">{{ checkbox.choice_label }}</label></div>
                             {% endfor %}
                         </div>
                     </div>
 
                     <div class="step-content" id="step-4">
-                        <input type="text" class="form-control mb-2" placeholder="Buscar Vacina..." onkeyup="filtrar(this, 'listaVacinas')">
-                        <div class="custom-check-list" id="listaVacinas">
-                            {% for checkbox in form.vacinas %}
-                            <div class="check-item">{{ checkbox.tag }} <label for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label></div>
+                        <h5 class="fw-bold mb-3 text-success"><i class="fas fa-hard-hat me-2"></i> EPIs Específicos</h5>
+                        <input type="text" class="form-control mb-2" placeholder="Buscar EPI..." onkeyup="filtrar(this, 'listaEPIsWizard')">
+                        <div class="custom-check-list" id="listaEPIsWizard">
+                            {% for checkbox in form.epis_obrigatorios %}
+                            <div class="check-item">{{ checkbox.tag }} <label for="{{ checkbox.id_for_label }}" class="ms-2">{{ checkbox.choice_label }}</label></div>
                             {% empty %}
-                            <div class="p-3 text-center text-muted">Nenhuma vacina. Rode 'python manage.py popular_vacinas'.</div>
+                            <div class="p-3 text-center text-muted">Nenhuma EPI encontrado.</div>
                             {% endfor %}
                         </div>
                     </div>
 
                     <div class="step-content" id="step-5">
+                        <h5 class="fw-bold mb-3 text-info"><i class="fas fa-syringe me-2"></i> Vacinação</h5>
+                        <input type="text" class="form-control mb-2" placeholder="Buscar Vacina..." onkeyup="filtrar(this, 'listaVacinas')">
+                        <div class="custom-check-list" id="listaVacinas">
+                            {% for checkbox in form.vacinas %}
+                            <div class="check-item">{{ checkbox.tag }} <label for="{{ checkbox.id_for_label }}" class="ms-2">{{ checkbox.choice_label }}</label></div>
+                            {% empty %}
+                            <div class="p-3 text-center text-muted">Nenhuma vacina cadastrada.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="step-content" id="step-6">
                         <div class="d-flex justify-content-between mb-2">
-                            <input type="text" class="form-control w-75" placeholder="Buscar Exame..." onkeyup="filtrar(this, 'listaExames')">
+                            <h5 class="fw-bold text-primary"><i class="fas fa-notes-medical me-2"></i> Exames (PCMSO)</h5>
                             <button type="button" class="btn btn-sm btn-success" onclick="novoExameModal()">+ Novo</button>
                         </div>
+                        <input type="text" class="form-control mb-2" placeholder="Buscar Exame..." onkeyup="filtrar(this, 'listaExames')">
                         <div class="custom-check-list" id="listaExames">
                             {% for checkbox in form.exames %}
-                            <div class="check-item">{{ checkbox.tag }} <label for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label></div>
+                            <div class="check-item">{{ checkbox.tag }} <label for="{{ checkbox.id_for_label }}" class="ms-2">{{ checkbox.choice_label }}</label></div>
                             {% endfor %}
                         </div>
                     </div>
                 </div>
 
-                <div class="modal-footer justify-content-between">
+                <div class="modal-footer justify-content-between bg-light">
                     <button type="button" class="btn btn-secondary" id="btnPrev" onclick="mudarPasso(-1)" disabled>Voltar</button>
-                    <button type="button" class="btn btn-primary" id="btnNext" onclick="mudarPasso(1)">Próximo</button>
-                    <button type="submit" class="btn btn-success d-none" id="btnSubmit">Salvar Matriz</button>
+                    <div>
+                        <button type="button" class="btn btn-primary" id="btnNext" onclick="mudarPasso(1)">Próximo</button>
+                        <button type="submit" class="btn btn-success d-none" id="btnSubmit">
+                            <i class="fas fa-save me-2"></i> Salvar Vínculo
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -260,7 +375,8 @@
 <script>
     // VARIAVEIS
     let modalSetor, modalCargo, modalWizard;
-    let passoAtual = 1; const totalPassos = 5;
+    let passoAtual = 1; 
+    const totalPassos = 6; // Atualizado para 6 passos
 
     document.addEventListener('DOMContentLoaded', function() {
         modalSetor = new bootstrap.Modal(document.getElementById('modalSetor'));
@@ -296,6 +412,8 @@
         }
 
         document.getElementById('btnPrev').disabled = (passoAtual === 1);
+        
+        // Se for o último passo, mostra botão salvar
         if(passoAtual === totalPassos) {
             document.getElementById('btnNext').classList.add('d-none');
             document.getElementById('btnSubmit').classList.remove('d-none');
@@ -305,16 +423,37 @@
         }
     }
 
-    // FILTRO
+    // FILTRO GENÉRICO MELHORADO
     function filtrar(input, id) {
         let termo = input.value.toLowerCase();
-        let itens = document.getElementById(id).getElementsByClassName('check-item');
-        for(let item of itens) {
-            item.style.display = item.innerText.toLowerCase().includes(termo) ? 'flex' : 'none';
+        let lista = document.getElementById(id);
+        if(!lista) return;
+        
+        // Seleciona tanto os .check-item gerados manualmente quanto os padrão do Django
+        let itens = lista.querySelectorAll('.check-item, label'); 
+        
+        if (itens.length === 0) return;
+
+        let customItens = lista.getElementsByClassName('check-item');
+        if (customItens.length > 0) {
+            for(let item of customItens) {
+                let texto = item.innerText.toLowerCase();
+                item.style.display = texto.includes(termo) ? 'flex' : 'none';
+            }
+        } else {
+            for(let item of itens) {
+                if(item.tagName === 'LABEL') {
+                    let container = item.parentElement;
+                    let texto = item.innerText.toLowerCase();
+                    if(container.tagName === 'LI' || container.tagName === 'DIV') {
+                        container.style.display = texto.includes(termo) ? 'block' : 'none';
+                    }
+                }
+            }
         }
     }
 
-    // SALVAR SETOR/CARGO VIA AJAX E ATUALIZAR SELECT
+    // SALVAR SETOR/CARGO VIA AJAX
     function salvarEstrutura(e, tipo) {
         e.preventDefault();
         let form = e.target;
@@ -325,29 +464,28 @@
         .then(r => r.json())
         .then(res => {
             if(res.success) {
-                // Fechar modal
-                if(tipo === 'setor') modalSetor.hide();
-                else modalCargo.hide();
-                
-                // Adicionar nova opção ao Select sem recarregar a página
-                let selectId = (tipo === 'setor') ? 'id_setor' : 'id_cargo';
-                let select = document.getElementById(selectId);
-                
-                if(select) {
-                    let option = new Option(res.nome, res.id);
-                    option.selected = true;
-                    select.add(option);
+                if(modalWizard._isShown) {
+                    if(tipo === 'setor') modalSetor.hide();
+                    else modalCargo.hide();
+                    
+                    let selectId = (tipo === 'setor') ? 'id_setor' : 'id_cargo';
+                    let select = document.getElementById(selectId);
+                    
+                    if(select) {
+                        let option = new Option(res.nome, res.id);
+                        option.selected = true;
+                        select.add(option);
+                    }
+                    form.reset();
                 } else {
-                    // Se não estiver no Wizard, recarrega a página para ver na tabela
                     location.reload();
                 }
-                form.reset();
-            } else { alert('Erro: ' + res.error); }
+            } else { alert('Erro: ' + (res.error || 'Erro desconhecido')); }
         });
     }
 
     function deletarItem(tipo, id) {
-        if(confirm('Tem certeza?')) {
+        if(confirm('Tem certeza que deseja excluir?')) {
             fetch(`/api/estrutura/${tipo}/`, {
                 method: 'DELETE',
                 headers: {'X-CSRFToken': '{{ csrf_token }}'},

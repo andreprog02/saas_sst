@@ -961,26 +961,83 @@ def configurar_matriz_sst(request):
         if form.is_valid():
             setor = form.cleaned_data['setor']
             cargo = form.cleaned_data['cargo']
+            
+            # Tenta buscar uma matriz existente ou cria uma nova
             matriz, created = MatrizRiscoEPI.objects.get_or_create(
                 empresa=empresa, setor=setor, cargo=cargo
             )
-            form_save = MatrizRiscoEPIForm(empresa.id, request.POST, instance=matriz)
-            form_save.save()
-            messages.success(request, 'Regra da Matriz salva com sucesso!')
+            
+            # --- LÓGICA DE HERANÇA (Só executa se acabou de criar o vínculo) ---
+            if created:
+                # Copia os dados GLOBAIS do Setor para o Cargo específico
+                if setor.riscos.exists():
+                    matriz.riscos.add(*setor.riscos.all())
+                
+                if setor.epis.exists():
+                    matriz.epis_obrigatorios.add(*setor.epis.all())
+
+                if setor.normas.exists():
+                    matriz.nrs.add(*setor.normas.all())
+                
+                if setor.vacinas.exists():
+                    matriz.vacinas.add(*setor.vacinas.all())
+
+                if setor.exames.exists():
+                    matriz.exames.add(*setor.exames.all())
+
+                # Salva a primeira versão com a herança
+                matriz.save()
+
+            # --- AGORA APLICA O QUE VEIO DO FORMULÁRIO (ESPECÍFICOS DO CARGO) ---
+            # O formulário da view 'MatrizRiscoEPIForm' vai salvar por cima.
+            # Como é um ManyToMany, o form.save() normalmente substitui tudo.
+            # Para manter a herança + novos, precisamos de cuidado.
+            
+            # Neste caso, o form do Wizard já traz os itens selecionados pelo usuário.
+            # Se o usuário não selecionou nada no Wizard (passou rápido), o form vai salvar vazio.
+            # Porém, a estratégia ideal aqui é:
+            # 1. O usuário cria o vínculo.
+            # 2. O sistema herda.
+            # 3. O usuário edita para adicionar os específicos.
+            
+            # ATUALIZAÇÃO DO FORM PARA NÃO PERDER HERANÇA:
+            # Como o form save() do Django limpa e seta os novos valores, se quisermos
+            # SOMAR (Herança + Form), temos que fazer manual ou garantir que o form já venha preenchido.
+            
+            # Vamos salvar o form normalmente (o que o usuário marcou no modal conta como "final")
+            # SE você quiser que o modal JÁ VENHA PREENCHIDO com os dados do setor, 
+            # isso teria que ser feito via JavaScript no Frontend (mais complexo).
+            
+            # Abordagem Híbrida Simples (Backend):
+            # Salva o form. Se foi criação, adicionamos o que faltou do setor.
+            obj_salvo = form.save(commit=False)
+            obj_salvo.pk = matriz.pk # Garante que estamos editando o objeto criado/recuperado
+            form.save_m2m() # Salva o que o usuário marcou no modal
+            
+            if created:
+                # Reforça a herança: Adiciona o do setor (sem remover o que o usuário marcou)
+                matriz.riscos.add(*setor.riscos.all())
+                matriz.epis_obrigatorios.add(*setor.epis.all())
+                matriz.nrs.add(*setor.normas.all())
+                matriz.vacinas.add(*setor.vacinas.all())
+                matriz.exames.add(*setor.exames.all())
+            
+            messages.success(request, 'Matriz atualizada com sucesso! (Dados do setor herdados)')
             return redirect('configurar_matriz_sst')
         else:
             messages.error(request, 'Erro ao salvar. Verifique os campos.')
     
+    # ... resto da view (contexto, render, etc)
+    # ATENÇÃO: Atualize a instanciação dos forms auxiliares para passar a empresa
     regras = MatrizRiscoEPI.objects.filter(empresa=empresa).select_related('setor', 'cargo')
-    setores = Setor.objects.filter(empresa=empresa)
-    cargos = Cargo.objects.filter(empresa=empresa)
     
     return render(request, 'configuracoes/matriz_sst.html', {
         'regras': regras,
-        'setores': setores,
-        'cargos': cargos,
+        'setores': Setor.objects.filter(empresa=empresa),
+        'cargos': Cargo.objects.filter(empresa=empresa),
         'form': MatrizRiscoEPIForm(empresa.id),
-        'form_setor': SetorForm(),
+        'form_setor': SetorForm(empresa=empresa), # Atualizado aqui
+        'form': MatrizRiscoEPIForm(empresa.id),
         'form_cargo': CargoForm(),
     })
 
@@ -1021,15 +1078,23 @@ def api_consulta_matriz(request):
 @login_required
 def api_gerenciar_estrutura(request, tipo):
     empresa = request.user.perfil.empresa
+    
     if request.method == 'POST':
         try:
             if tipo == 'setor':
-                form = SetorForm(request.POST)
+                # CORREÇÃO 1: Passar 'empresa=empresa' para carregar as opções corretas
+                form = SetorForm(request.POST, empresa=empresa)
                 if form.is_valid():
                     obj = form.save(commit=False)
                     obj.empresa = empresa
                     obj.save()
+                    # CORREÇÃO 2: Salvar os relacionamentos (Riscos, EPIs, etc)
+                    form.save_m2m()
                     return JsonResponse({'success': True, 'id': obj.id, 'nome': obj.nome})
+                else:
+                    # Retorna os erros para ajudar no debug
+                    return JsonResponse({'success': False, 'error': form.errors.as_json()})
+            
             elif tipo == 'cargo':
                 form = CargoForm(request.POST)
                 if form.is_valid():
@@ -1037,6 +1102,9 @@ def api_gerenciar_estrutura(request, tipo):
                     obj.empresa = empresa
                     obj.save()
                     return JsonResponse({'success': True, 'id': obj.id, 'nome': obj.nome})
+                else:
+                    return JsonResponse({'success': False, 'error': form.errors.as_json()})
+                    
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
             
@@ -1165,36 +1233,86 @@ def novo_hospital(request):
 
 #### PGR
 
+@login_required
 def pgr_empresa(request):
-    setores = Setor.objects.all()
-    dados = []
+    empresa = request.user.perfil.empresa
+    
+    # 1. Buscamos todos os setores da empresa
+    setores = Setor.objects.filter(empresa=empresa).order_by('nome')
+    
+    dados_pgr = []
 
     for setor in setores:
-        cargos = Cargo.objects.filter(setor=setor)
+        # 2. Para cada setor, buscamos as Matrizes de Risco configuradas (que ligam Setor a Cargo)
+        matrizes = MatrizRiscoEPI.objects.filter(
+            empresa=empresa, 
+            setor=setor
+        ).select_related('cargo').prefetch_related(
+            'riscos', 
+            'epis_obrigatorios', 
+            'exames', 
+            'vacinas'
+        )
 
-        riscos_setor = set()
-        epis_setor = set()
-        exames_setor = set()
-        vacinas_setor = set()
+        # Se houver cargos configurados neste setor, processamos
+        if matrizes.exists():
+            cargos_do_setor = []
+            
+            for matriz in matrizes:
+                # Agrupamos os dados por Cargo dentro do Setor
+                cargos_do_setor.append({
+                    'cargo_nome': matriz.cargo.nome,
+                    'descricao_cargo': matriz.cargo.descricao,
+                    'riscos': matriz.riscos.all(),
+                    'epis': matriz.epis_obrigatorios.all(),
+                    'exames': matriz.exames.all(),
+                    'vacinas': matriz.vacinas.all(),
+                    'nrs': matriz.nrs.all()
+                })
+            
+            dados_pgr.append({
+                'setor_nome': setor.nome,
+                'descricao_setor': setor.descricao,
+                'cargos': cargos_do_setor
+            })
 
-        for cargo in cargos:
-            matrizes = MatrizRiscoEPI.objects.filter(cargo=cargo)
+    context = {
+        'dados_pgr': dados_pgr,
+        'empresa': empresa,
+        'data_emissao': date.today()
+    }
 
-            for m in matrizes:
-                riscos_setor.add(m.risco.nome)
-                if m.epi:
-                    epis_setor.add(m.epi.nome)
-                if m.exame:
-                    exames_setor.add(m.exame.nome)
-                if m.vacina:
-                    vacinas_setor.add(m.vacina.nome)
+    return render(request, 'pgr_empresa.html', context)
 
-        dados.append({
-            'setor': setor.nome,
-            'riscos': riscos_setor,
-            'epis': epis_setor,
-            'exames': exames_setor,
-            'vacinas': vacinas_setor,
-        })
 
-    return render(request, 'pgr_empresa.html', {'dados': dados})
+@login_required
+def popular_padroes_usuario(request):
+    """
+    Função de emergência para popular EPIs e Riscos para a empresa do usuário logado.
+    Acesse via navegador: /popular-padroes/
+    """
+    empresa = request.user.perfil.empresa
+    
+    # 1. EPIs
+    from core.models import CategoriaEPI, TipoEPI
+    dados_epi = {
+        'Proteção da Cabeça': ['Capacete de segurança', 'Capuz ou balaclava'],
+        'Proteção Auditiva': ['Protetor tipo concha', 'Protetor tipo plug'],
+        'Proteção Respiratória': ['Máscara PFF1', 'Máscara PFF2', 'Máscara Facial'],
+        'Proteção Visual': ['Óculos incolor', 'Óculos escuro', 'Protetor facial'],
+        'Proteção Mãos': ['Luva vaqueta', 'Luva nitrílica', 'Luva malha', 'Luva PVC'],
+        'Proteção Pés': ['Botina biqueira aço', 'Botina composite', 'Bota PVC'],
+        'Proteção Corpo': ['Avental raspa', 'Capa chuva', 'Colete reflexivo'],
+        'Altura': ['Cinto paraquedista', 'Talabarte Y', 'Trava-quedas']
+    }
+    
+    count = 0
+    for cat_nome, tipos in dados_epi.items():
+        # Garante a categoria
+        CategoriaEPI.objects.get_or_create(empresa=empresa, nome=cat_nome)
+        # Garante os tipos
+        for tipo in tipos:
+            _, created = TipoEPI.objects.get_or_create(empresa=empresa, nome=tipo)
+            if created: count += 1
+            
+    return JsonResponse({'status': 'ok', 'mensagem': f'{count} EPIs criados/verificados para a empresa {empresa.nome_fantasia}!'})

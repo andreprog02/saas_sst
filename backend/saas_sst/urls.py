@@ -168,6 +168,9 @@ urlpatterns = [
 
     path('api/estrutura/<str:tipo>/', views.api_gerenciar_estrutura, name='api_gerenciar_estrutura'),
 
-    path('pgr/', views.pgr_empresa, name='pgr_empresa'),
+    path('documentos/pgr/', views.pgr_empresa, name='pgr_empresa'),
+
+    # dentro de urlpatterns...
+    path('popular-padroes/', views.popular_padroes_usuario, name='popular_padroes'),
 
 ]

@@ -2,93 +2,334 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>PGR da Empresa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PGR - Inventário de Riscos</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
+        :root {
+            --color-fisico: #198754;      /* Verde */
+            --color-quimico: #dc3545;     /* Vermelho */
+            --color-biologico: #855a3a;   /* Marrom */
+            --color-ergonomico: #ffc107;  /* Amarelo */
+            --color-acidente: #0d6efd;    /* Azul */
+            --bg-paper: #ffffff;
+            --bg-body: #525659;
+        }
+
         body {
-            font-family: Arial, Helvetica, sans-serif;
-            margin: 40px;
-        }
-        h1 {
-            text-align: center;
-        }
-        .setor {
-            border: 1px solid #ccc;
+            background-color: var(--bg-body);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
             padding: 20px;
+            -webkit-print-color-adjust: exact;
+        }
+
+        /* --- FOLHA A4 --- */
+        .page-a4 {
+            background-color: var(--bg-paper);
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 15mm 15mm;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        /* --- CABEÇALHO --- */
+        .doc-header {
+            border-bottom: 3px solid #333;
             margin-bottom: 30px;
+            padding-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .company-info h2 { margin: 0; font-size: 1.5rem; font-weight: 800; text-transform: uppercase; color: #2c3e50; }
+        .company-info p { margin: 2px 0 0; color: #666; font-size: 0.9rem; }
+        .doc-title { text-align: right; }
+        .doc-title h1 { margin: 0; font-size: 2rem; font-weight: 900; color: #333; letter-spacing: -1px; }
+        .doc-title span { background: #333; color: #fff; padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; text-transform: uppercase; }
+
+        /* --- SETOR --- */
+        .setor-section {
+            margin-top: 30px;
+            margin-bottom: 40px;
+            page-break-inside: avoid;
+        }
+        .setor-badge {
+            background-color: #2c3e50;
+            color: white;
+            padding: 8px 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            display: inline-block;
+            margin-bottom: 15px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* --- CARGO CARD --- */
+        .cargo-container {
+            border: 1px solid #dee2e6;
             border-radius: 8px;
+            margin-bottom: 25px;
+            overflow: hidden;
+            background: #fff;
+            page-break-inside: avoid;
         }
-        h2 {
-            margin-bottom: 10px;
-            background-color: #f2f2f2;
-            padding: 8px;
-            border-radius: 4px;
+        .cargo-header {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        ul {
-            margin-top: 5px;
-            margin-bottom: 15px;
+        .cargo-title { font-weight: 700; font-size: 1.1rem; color: #333; margin: 0; }
+        .cargo-desc { font-size: 0.85rem; color: #666; font-style: italic; max-width: 60%; text-align: right; }
+
+        /* --- TABELA DE RISCOS --- */
+        .risk-table { width: 100%; font-size: 0.85rem; border-collapse: collapse; margin-bottom: 0; }
+        .risk-table th { background-color: #e9ecef; color: #495057; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; padding: 8px; border-bottom: 2px solid #dee2e6; }
+        .risk-table td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .risk-table tr:last-child td { border-bottom: none; }
+        
+        /* Cores dos Riscos (Bolinhas) */
+        .risk-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+        .dot-fisico { background-color: var(--color-fisico); }
+        .dot-quimico { background-color: var(--color-quimico); }
+        .dot-biologico { background-color: var(--color-biologico); }
+        .dot-ergonomico { background-color: var(--color-ergonomico); }
+        .dot-acidente { background-color: var(--color-acidente); }
+
+        /* Badges de Tipo */
+        .badge-risk { font-size: 0.7rem; padding: 3px 6px; border-radius: 4px; color: #fff; font-weight: 600; text-transform: uppercase; }
+        .bg-fisico { background-color: var(--color-fisico); }
+        .bg-quimico { background-color: var(--color-quimico); }
+        .bg-biologico { background-color: var(--color-biologico); }
+        .bg-ergonomico { background-color: var(--color-ergonomico); color: #000; }
+        .bg-acidente { background-color: var(--color-acidente); }
+
+        /* --- CONTROLES (Rodapé do Cargo) --- */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            border-top: 1px solid #dee2e6;
         }
-        li {
-            margin-left: 20px;
+        .control-col {
+            padding: 12px;
+            border-right: 1px solid #dee2e6;
+            font-size: 0.8rem;
         }
-        .bloco {
-            margin-bottom: 15px;
+        .control-col:last-child { border-right: none; }
+        .control-title {
+            font-weight: 700;
+            color: #555;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        .control-list { list-style: none; padding: 0; margin: 0; }
+        .control-list li { margin-bottom: 4px; display: flex; align-items: flex-start; }
+        .control-list li i { margin-right: 6px; margin-top: 3px; font-size: 0.7rem; opacity: 0.7; }
+
+        /* --- RODAPÉ DE ASSINATURA --- */
+        .signature-section {
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-around;
+            page-break-inside: avoid;
+        }
+        .signature-box {
+            text-align: center;
+            width: 40%;
+            border-top: 1px solid #000;
+            padding-top: 10px;
+        }
+
+        /* --- IMPRESSÃO --- */
+        @media print {
+            body { background-color: #fff; padding: 0; }
+            .page-a4 { box-shadow: none; margin: 0; width: 100%; max-width: none; padding: 10mm; }
+            .no-print { display: none !important; }
+            .setor-section, .cargo-container { page-break-inside: avoid; }
+        }
+
+        /* --- BOTÕES FLUTUANTES --- */
+        .actions-bar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
         }
     </style>
 </head>
 <body>
 
-    <h1>PGR - Inventário de Riscos por Setor</h1>
+    <div class="actions-bar no-print">
+        <button onclick="window.print()" class="btn btn-primary shadow">
+            <i class="fas fa-print me-2"></i> Imprimir / PDF
+        </button>
+        <a href="{% url 'configurar_matriz_sst' %}" class="btn btn-secondary shadow">
+            <i class="fas fa-arrow-left me-2"></i> Voltar
+        </a>
+    </div>
 
-    {% for item in dados %}
-        <div class="setor">
-            <h2>Setor: {{ item.setor }}</h2>
-
-            <div class="bloco">
-                <strong>Riscos Ocupacionais:</strong>
-                <ul>
-                    {% for risco in item.riscos %}
-                        <li>{{ risco }}</li>
-                    {% empty %}
-                        <li>Nenhum risco cadastrado.</li>
-                    {% endfor %}
-                </ul>
+    <div class="page-a4">
+        
+        <header class="doc-header">
+            <div class="company-info">
+                <h2>{{ empresa.nome_fantasia }}</h2>
+                <p><strong>CNPJ:</strong> {{ empresa.cnpj }}</p>
+                <p><strong>Endereço:</strong> {{ empresa.endereco|default:"Endereço não cadastrado" }}</p>
             </div>
-
-            <div class="bloco">
-                <strong>EPIs Obrigatórios:</strong>
-                <ul>
-                    {% for epi in item.epis %}
-                        <li>{{ epi }}</li>
-                    {% empty %}
-                        <li>Nenhum EPI vinculado.</li>
-                    {% endfor %}
-                </ul>
+            <div class="doc-title">
+                <span>Documento Técnico</span>
+                <h1>PGR</h1>
+                <p class="m-0 text-muted">Inventário de Riscos Ocupacionais</p>
+                <small class="text-muted">Emissão: {% now "d/m/Y" %}</small>
             </div>
+        </header>
 
-            <div class="bloco">
-                <strong>Exames Obrigatórios:</strong>
-                <ul>
-                    {% for exame in item.exames %}
-                        <li>{{ exame }}</li>
-                    {% empty %}
-                        <li>Nenhum exame vinculado.</li>
-                    {% endfor %}
-                </ul>
+        {% if not dados_pgr %}
+            <div class="alert alert-warning text-center p-5">
+                <i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i>
+                <h4>Nenhum dado encontrado</h4>
+                <p>Acesse a <strong>Matriz de Riscos</strong> no sistema e vincule riscos aos cargos e setores.</p>
             </div>
+        {% endif %}
 
-            <div class="bloco">
-                <strong>Vacinas Obrigatórias:</strong>
-                <ul>
-                    {% for vacina in item.vacinas %}
-                        <li>{{ vacina }}</li>
-                    {% empty %}
-                        <li>Nenhuma vacina vinculada.</li>
-                    {% endfor %}
-                </ul>
+        {% for item in dados_pgr %}
+        <div class="setor-section">
+            <div class="setor-badge">
+                <i class="fas fa-building me-2"></i> SETOR: {{ item.setor_nome }}
             </div>
+            
+            {% if item.descricao_setor %}
+                <p class="text-muted small mb-3 fst-italic">{{ item.descricao_setor }}</p>
+            {% endif %}
 
+            {% for cargo in item.cargos %}
+            <div class="cargo-container">
+                
+                <div class="cargo-header">
+                    <h3 class="cargo-title">
+                        <i class="fas fa-user-tie me-2 text-secondary"></i> {{ cargo.cargo_nome }}
+                    </h3>
+                    <div class="cargo-desc">
+                        {{ cargo.descricao_cargo|default:"Sem descrição de atividades."|truncatechars:100 }}
+                    </div>
+                </div>
+
+                {% if cargo.riscos %}
+                <table class="risk-table">
+                    <thead>
+                        <tr>
+                            <th width="15%">Tipo</th>
+                            <th width="25%">Fator de Risco (Agente)</th>
+                            <th width="25%">Fonte Geradora</th>
+                            <th width="15%">Intensidade</th>
+                            <th width="20%">Possíveis Danos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for risco in cargo.riscos %}
+                        <tr>
+                            <td>
+                                <span class="badge-risk 
+                                    {% if risco.tipo == 'FISICO' %}bg-fisico
+                                    {% elif risco.tipo == 'QUIMICO' %}bg-quimico
+                                    {% elif risco.tipo == 'BIOLOGICO' %}bg-biologico
+                                    {% elif risco.tipo == 'ERGONOMICO' %}bg-ergonomico
+                                    {% else %}bg-acidente{% endif %}">
+                                    {{ risco.get_tipo_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark">{{ risco.agente }}</div>
+                            </td>
+                            <td>{{ risco.fonte_geradora|default:"-" }}</td>
+                            <td>
+                                <span class="badge bg-light text-dark border">{{ risco.get_intensidade_display }}</span>
+                            </td>
+                            <td>{{ risco.possiveis_danos|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="p-3 text-center text-muted bg-light border-bottom">
+                    <small>✅ Ausência de riscos ocupacionais identificados para esta função.</small>
+                </div>
+                {% endif %}
+
+                <div class="controls-grid">
+                    
+                    <div class="control-col">
+                        <div class="control-title text-primary">
+                            <i class="fas fa-hard-hat me-2"></i> Equipamentos de Proteção (EPI)
+                        </div>
+                        <ul class="control-list">
+                            {% for epi in cargo.epis %}
+                                <li><i class="fas fa-check text-success"></i> {{ epi.nome }} (CA: {{ epi.ca|default:"-" }})</li>
+                            {% empty %}
+                                <li class="text-muted fst-italic">Não aplicável</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div class="control-col">
+                        <div class="control-title text-warning">
+                            <i class="fas fa-clipboard-list me-2"></i> Medidas Adm. & Treinamentos
+                        </div>
+                        <ul class="control-list">
+                            {% for nr in cargo.nrs %}
+                                <li><i class="fas fa-book-open text-warning"></i> {{ nr.codigo }} - {{ nr.titulo|truncatechars:25 }}</li>
+                            {% empty %}
+                                <li class="text-muted fst-italic">Nenhum treinamento obrigatório</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div class="control-col">
+                        <div class="control-title text-danger">
+                            <i class="fas fa-heartbeat me-2"></i> Monitoramento de Saúde (PCMSO)
+                        </div>
+                        <ul class="control-list">
+                            {% for exame in cargo.exames %}
+                                <li><i class="fas fa-notes-medical text-danger"></i> {{ exame.nome }}</li>
+                            {% endfor %}
+                            {% for vacina in cargo.vacinas %}
+                                <li><i class="fas fa-syringe text-info"></i> Vacina: {{ vacina.nome }}</li>
+                            {% endfor %}
+                            {% if not cargo.exames and not cargo.vacinas %}
+                                <li class="text-muted fst-italic">Apenas exame clínico padrão</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+            {% endfor %} </div>
+        {% endfor %} <div class="signature-section">
+            <div class="signature-box">
+                <strong>Responsável Técnico</strong><br>
+                <small>Engenheiro/Técnico de Segurança</small>
+            </div>
+            <div class="signature-box">
+                <strong>Representante Legal</strong><br>
+                <small>{{ empresa.razao_social }}</small>
+            </div>
         </div>
-    {% endfor %}
+
+    </div>
 
 </body>
 </html>

@@ -81,9 +81,16 @@ class Setor(models.Model):
     nome = models.CharField(max_length=100)
     descricao = models.TextField(null=True, blank=True)
     responsavel = models.CharField(max_length=100, null=True, blank=True)
-    normas = models.ManyToManyField(NormaRegulamentadora, blank=True)
-    riscos = models.ManyToManyField(RiscoOcupacional, blank=True)
     ativo = models.BooleanField(default=True)
+
+    # --- CAMPOS DE PADRÃO DO SETOR (Herança) ---
+    riscos = models.ManyToManyField(RiscoOcupacional, blank=True, verbose_name="Riscos Padrão do Setor")
+    normas = models.ManyToManyField(NormaRegulamentadora, blank=True, verbose_name="NRs Padrão")
+    # Novos campos para herança completa:
+    vacinas = models.ManyToManyField('Vacina', blank=True, verbose_name="Vacinas Padrão")
+    exames = models.ManyToManyField('TipoExame', blank=True, verbose_name="Exames Padrão")
+    # Use string 'EPI' pois a classe EPI é definida mais abaixo no arquivo
+    epis = models.ManyToManyField('TipoEPI', blank=True, verbose_name="EPIs Padrão (Tipos)")
 
     def __str__(self): return self.nome
 
