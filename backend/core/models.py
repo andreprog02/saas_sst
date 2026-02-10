@@ -510,3 +510,14 @@ class EquipamentoNR13(models.Model):
     laudo_tecnico = models.FileField(upload_to='nr13_laudos/', null=True, blank=True)
 
     def __str__(self): return self.codigo
+
+
+####PGR da empresa
+
+class PGR(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    data_geracao = models.DateTimeField(auto_now_add=True)
+    gerado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"PGR gerado em {self.data_geracao}"

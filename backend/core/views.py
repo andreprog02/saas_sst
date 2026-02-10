@@ -1160,3 +1160,41 @@ def novo_hospital(request):
     else:
         form = HospitalForm(empresa.id)
     return render(request, 'hospitais/form.html', {'form': form})
+
+
+
+#### PGR
+
+def pgr_empresa(request):
+    setores = Setor.objects.all()
+    dados = []
+
+    for setor in setores:
+        cargos = Cargo.objects.filter(setor=setor)
+
+        riscos_setor = set()
+        epis_setor = set()
+        exames_setor = set()
+        vacinas_setor = set()
+
+        for cargo in cargos:
+            matrizes = MatrizRiscoEPI.objects.filter(cargo=cargo)
+
+            for m in matrizes:
+                riscos_setor.add(m.risco.nome)
+                if m.epi:
+                    epis_setor.add(m.epi.nome)
+                if m.exame:
+                    exames_setor.add(m.exame.nome)
+                if m.vacina:
+                    vacinas_setor.add(m.vacina.nome)
+
+        dados.append({
+            'setor': setor.nome,
+            'riscos': riscos_setor,
+            'epis': epis_setor,
+            'exames': exames_setor,
+            'vacinas': vacinas_setor,
+        })
+
+    return render(request, 'pgr_empresa.html', {'dados': dados})

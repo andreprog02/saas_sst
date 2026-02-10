@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>PGR da Empresa</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 40px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .setor {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        h2 {
+            margin-bottom: 10px;
+            background-color: #f2f2f2;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        ul {
+            margin-top: 5px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-left: 20px;
+        }
+        .bloco {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>PGR - Inventário de Riscos por Setor</h1>
+
+    {% for item in dados %}
+        <div class="setor">
+            <h2>Setor: {{ item.setor }}</h2>
+
+            <div class="bloco">
+                <strong>Riscos Ocupacionais:</strong>
+                <ul>
+                    {% for risco in item.riscos %}
+                        <li>{{ risco }}</li>
+                    {% empty %}
+                        <li>Nenhum risco cadastrado.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="bloco">
+                <strong>EPIs Obrigatórios:</strong>
+                <ul>
+                    {% for epi in item.epis %}
+                        <li>{{ epi }}</li>
+                    {% empty %}
+                        <li>Nenhum EPI vinculado.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="bloco">
+                <strong>Exames Obrigatórios:</strong>
+                <ul>
+                    {% for exame in item.exames %}
+                        <li>{{ exame }}</li>
+                    {% empty %}
+                        <li>Nenhum exame vinculado.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="bloco">
+                <strong>Vacinas Obrigatórias:</strong>
+                <ul>
+                    {% for vacina in item.vacinas %}
+                        <li>{{ vacina }}</li>
+                    {% empty %}
+                        <li>Nenhuma vacina vinculada.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+        </div>
+    {% endfor %}
+
+</body>
+</html>

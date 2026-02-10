@@ -167,4 +167,7 @@ urlpatterns = [
     path('api/tipo-exame/novo/', views.api_criar_tipo_exame, name='api_criar_tipo_exame'),
 
     path('api/estrutura/<str:tipo>/', views.api_gerenciar_estrutura, name='api_gerenciar_estrutura'),
+
+    path('pgr/', views.pgr_empresa, name='pgr_empresa'),
+
 ]
