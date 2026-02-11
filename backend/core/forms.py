@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
+from .models import EPI, CategoriaEPI, TipoEPI, MarcaEPI, TamanhoEPI, Localizacao
 # --- IMPORTAÇÃO DOS MODELOS (CORRIGIDA: CARGO ADICIONADO) ---
 from .models import (
     Empresa, Funcionario, Setor, Cargo, NormaRegulamentadora, RiscoOcupacional,
@@ -198,9 +199,9 @@ class CargoForm(forms.ModelForm):
 # --- EPIs E ESTOQUE ---
 
 class EPIForm(forms.ModelForm):
-    # Campo auxiliar para o filtro (não será salvo no model EPI, serve só pro usuário escolher)
+    # Campo auxiliar (Dropdown de Categorias)
     categoria_filtro = forms.ModelChoiceField(
-        queryset=CategoriaEPI.objects.none(),
+        queryset=CategoriaEPI.objects.none(), # Começa vazio para não pesar
         label="Categoria (Filtro)",
         required=False,
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_categoria_filtro'})
@@ -208,12 +209,17 @@ class EPIForm(forms.ModelForm):
 
     class Meta:
         model = EPI
-        fields = ['categoria_filtro', 'tipo', 'fabricante', 'ca', 'data_validade', 'quantidade']
-        # Adicione seus outros campos aqui
+        # Note que usamos 'fabricante' aqui, pois é o nome no seu model
+        fields = ['tipo', 'fabricante', 'tamanho', 'ca', 'data_validade', 'quantidade', 'local']
+        
         widgets = {
             'tipo': forms.Select(attrs={'class': 'form-select', 'id': 'id_tipo'}),
+            'fabricante': forms.Select(attrs={'class': 'form-select', 'id': 'id_fabricante'}),
+            'tamanho': forms.Select(attrs={'class': 'form-select', 'id': 'id_tamanho'}),
+            'local': forms.Select(attrs={'class': 'form-select', 'id': 'id_local'}),
+            'ca': forms.TextInput(attrs={'class': 'form-control'}),
             'data_validade': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            # ...
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -221,21 +227,33 @@ class EPIForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if empresa_id:
-            # Popula a categoria
+            # --- AQUI ESTÁ A MÁGICA ---
+            # Preenche o dropdown de categorias com as que criamos no script
             self.fields['categoria_filtro'].queryset = CategoriaEPI.objects.filter(empresa_id=empresa_id)
-            # Popula o tipo (inicialmente vazio ou filtrado se já tiver instância)
+            
+            # Preenche os outros campos
+            self.fields['fabricante'].queryset = MarcaEPI.objects.filter(empresa_id=empresa_id).order_by('nome')
+            self.fields['tamanho'].queryset = TamanhoEPI.objects.filter(empresa_id=empresa_id).order_by('tamanho')
+            self.fields['local'].queryset = Localizacao.objects.filter(empresa_id=empresa_id).order_by('nome')
+
+            # Lógica para carregar os Tipos (se categoria foi selecionada ou é edição)
             self.fields['tipo'].queryset = TipoEPI.objects.none()
 
+            # 1. Se o usuário enviou o formulário (POST) e escolheu uma categoria
             if 'categoria_filtro' in self.data:
                 try:
                     cat_id = int(self.data.get('categoria_filtro'))
                     self.fields['tipo'].queryset = TipoEPI.objects.filter(categoria_id=cat_id).order_by('nome')
                 except (ValueError, TypeError):
-                    pass  
+                    pass
+            
+            # 2. Se é edição de um EPI já existente
             elif self.instance.pk and self.instance.tipo:
-                # Se for edição, carrega o tipo atual e a categoria correspondente
-                self.fields['tipo'].queryset = TipoEPI.objects.filter(categoria=self.instance.tipo.categoria).order_by('nome')
-                self.fields['categoria_filtro'].initial = self.instance.tipo.categoria
+                # Carrega a categoria original e os tipos dela
+                if self.instance.tipo.categoria:
+                    self.fields['categoria_filtro'].initial = self.instance.tipo.categoria
+                    self.fields['tipo'].queryset = self.instance.tipo.categoria.tipos.all().order_by('nome')
+
 
 class EntregaEPIForm(forms.ModelForm):
     class Meta:

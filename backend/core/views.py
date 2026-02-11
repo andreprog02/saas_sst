@@ -1344,10 +1344,50 @@ def popular_padroes_usuario(request):
 
 
 def load_tipos_epi(request):
-    categoria_id = request.GET.get('categoria')
+    # O JavaScript envia ?categoria=ID
+    categoria_id = request.GET.get('categoria') 
+    
     tipos = TipoEPI.objects.none()
     
     if categoria_id:
-        tipos = TipoEPI.objects.filter(categoria_id=categoria_id).order_by('nome')
-    
+        try:
+            tipos = TipoEPI.objects.filter(categoria_id=categoria_id).order_by('nome')
+        except ValueError:
+            pass # ID inválido
+            
     return render(request, 'partials/epis_dropdown_list.html', {'tipos': tipos})
+
+def api_criar_marca(request):
+    if request.method == 'POST':
+        nome = request.POST.get('nome')
+        if nome:
+            obj, _ = MarcaEPI.objects.get_or_create(
+                empresa=request.user.perfil.empresa, 
+                nome=nome.upper()
+            )
+            return JsonResponse({'id': obj.id, 'nome': obj.nome})
+    return JsonResponse({'erro': 'Erro ao criar marca'}, status=400)
+
+# API para criar Tamanho
+def api_criar_tamanho(request):
+    if request.method == 'POST':
+        nome = request.POST.get('nome')
+        if nome:
+            obj, _ = TamanhoEPI.objects.get_or_create(
+                empresa=request.user.perfil.empresa, 
+                nome=nome.upper()
+            )
+            return JsonResponse({'id': obj.id, 'nome': obj.nome})
+    return JsonResponse({'erro': 'Erro ao criar tamanho'}, status=400)
+
+# API para criar Local
+def api_criar_local(request):
+    if request.method == 'POST':
+        nome = request.POST.get('nome')
+        if nome:
+            obj, _ = Localizacao.objects.get_or_create(
+                empresa=request.user.perfil.empresa, 
+                nome=nome
+            )
+            return JsonResponse({'id': obj.id, 'nome': obj.nome})
+    return JsonResponse({'erro': 'Erro ao criar local'}, status=400)

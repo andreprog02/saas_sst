@@ -7,7 +7,7 @@
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <h2 class="fw-bold text-dark"><i class="fas fa-hard-hat text-primary me-2"></i> Cadastro de EPI</h2>
-            <p class="text-muted mb-0">Adicione novos equipamentos ao estoque.</p>
+            <p class="text-muted mb-0">Adicione novos equipamentos ao estoque manualmente.</p>
         </div>
         <a href="{% url 'lista_epis' %}" class="btn btn-outline-secondary">
             <i class="fas fa-arrow-left me-2"></i> Voltar
@@ -15,7 +15,7 @@
     </div>
 
     <div class="row justify-content-center">
-        <div class="col-lg-8">
+        <div class="col-lg-9">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white py-3 border-bottom">
                     <h5 class="fw-bold mb-0 text-primary">Dados do Equipamento</h5>
@@ -27,68 +27,73 @@
 
                         {% if form.non_field_errors %}
                             <div class="alert alert-danger">
-                                {% for error in form.non_field_errors %}
-                                    {{ error }}
-                                {% endfor %}
+                                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
                             </div>
                         {% endif %}
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label for="id_categoria_filtro" class="form-label fw-bold text-secondary small text-uppercase">1. Categoria (Filtro)</label>
-                                {{ form.categoria }} <div class="form-text">Selecione para carregar os modelos disponíveis.</div>
+                                <label for="id_categoria_filtro" class="form-label fw-bold text-secondary small text-uppercase">1. Categoria</label>
+                                {{ form.categoria }} 
+                                <div class="form-text small">Selecione para filtrar os modelos.</div>
                             </div>
-                            
                             <div class="col-md-6">
                                 <label for="id_tipo" class="form-label fw-bold text-secondary small text-uppercase">2. Modelo / Tipo *</label>
                                 {{ form.tipo }} 
-                                {% if form.tipo.errors %}
-                                    <div class="text-danger small">{{ form.tipo.errors }}</div>
-                                {% endif %}
+                                {% if form.tipo.errors %}<div class="text-danger small">{{ form.tipo.errors }}</div>{% endif %}
                             </div>
                         </div>
 
                         <hr class="text-muted opacity-25">
 
                         <div class="row g-3 mb-3">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold text-secondary small text-uppercase">Marca / Fabricante</label>
+                                <div class="input-group">
+                                    {{ form.marca }}
+                                    <button class="btn btn-outline-secondary" type="button" onclick="abrirModal('modalNovaMarca')">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-secondary small text-uppercase">Tamanho</label>
+                                <div class="input-group">
+                                    {{ form.tamanho }}
+                                    <button class="btn btn-outline-secondary" type="button" onclick="abrirModal('modalNovoTamanho')">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+
                             <div class="col-md-4">
-                                <label for="id_ca" class="form-label fw-bold text-secondary small text-uppercase">C.A. (Certificado) *</label>
+                                <label class="form-label fw-bold text-secondary small text-uppercase">Local de Estoque</label>
+                                <div class="input-group">
+                                    {{ form.local }}
+                                    <button class="btn btn-outline-secondary" type="button" onclick="abrirModal('modalNovoLocal')">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary small text-uppercase">C.A. (Certificado)</label>
                                 {{ form.ca }}
-                                {% if form.ca.errors %}
-                                    <div class="text-danger small">{{ form.ca.errors }}</div>
-                                {% endif %}
                             </div>
-                            
                             <div class="col-md-4">
-                                <label for="id_data_validade" class="form-label fw-bold text-secondary small text-uppercase">Validade do CA *</label>
+                                <label class="form-label fw-bold text-secondary small text-uppercase">Validade do CA</label>
                                 {{ form.data_validade }}
-                                {% if form.data_validade.errors %}
-                                    <div class="text-danger small">{{ form.data_validade.errors }}</div>
-                                {% endif %}
                             </div>
-
                             <div class="col-md-4">
-                                <label for="id_quantidade" class="form-label fw-bold text-secondary small text-uppercase">Quantidade Inicial *</label>
+                                <label class="form-label fw-bold text-secondary small text-uppercase">Qtd Inicial</label>
                                 {{ form.quantidade }}
-                                {% if form.quantidade.errors %}
-                                    <div class="text-danger small">{{ form.quantidade.errors }}</div>
-                                {% endif %}
                             </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-secondary small text-uppercase">Fabricante / Marca</label>
-                            <div class="input-group">
-                                {{ form.marca }} <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#modalNovaMarca">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                            {% if form.marca.errors %}
-                                <div class="text-danger small">{{ form.marca.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end border-top pt-3">
                             <a href="{% url 'lista_epis' %}" class="btn btn-light text-muted px-4">Cancelar</a>
                             <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm">
                                 <i class="fas fa-save me-2"></i> Salvar EPI
@@ -105,102 +110,102 @@
 <div class="modal fade" id="modalNovaMarca" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-light py-2">
-                <h6 class="modal-title fw-bold">Nova Marca</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
+            <div class="modal-header bg-light py-2"><h6 class="modal-title fw-bold">Nova Marca</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <input type="text" id="inputNomeMarca" class="form-control mb-2" placeholder="Nome do Fabricante">
-                <div id="feedbackMarca" class="text-danger small d-none"></div>
-                <button type="button" class="btn btn-primary w-100 btn-sm" onclick="criarNovaMarca()">Salvar</button>
+                <input type="text" id="inputNomeMarca" class="form-control mb-2" placeholder="Nome (Ex: 3M)">
+                <button class="btn btn-primary w-100 btn-sm" onclick="salvarItem('Marca', '/api/epi/marca/nova/', 'id_fabricante')">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNovoTamanho" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light py-2"><h6 class="modal-title fw-bold">Novo Tamanho</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="text" id="inputNomeTamanho" class="form-control mb-2" placeholder="Ex: G, 42, Único">
+                <button class="btn btn-primary w-100 btn-sm" onclick="salvarItem('Tamanho', '/api/epi/tamanho/novo/', 'id_tamanho')">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNovoLocal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light py-2"><h6 class="modal-title fw-bold">Novo Local</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="text" id="inputNomeLocal" class="form-control mb-2" placeholder="Ex: Almoxarifado 1">
+                <button class="btn btn-primary w-100 btn-sm" onclick="salvarItem('Local', '/api/config/local/novo/', 'id_local')">Salvar</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const categoriaSelect = document.getElementById('id_categoria'); // ID padrão do Django para o campo 'categoria'
-        const tipoSelect = document.getElementById('id_tipo');
-        const urlAjax = "{% url 'ajax_load_tipos' %}";
+    // Função auxiliar para abrir modais
+    function abrirModal(modalId) {
+        new bootstrap.Modal(document.getElementById(modalId)).show();
+    }
 
-        // --- 1. Lógica do Dropdown Dependente ---
-        function carregarTipos() {
-            const categoriaId = categoriaSelect.value;
-            const tipoSelecionado = tipoSelect.value;
-
-            if (!categoriaId) {
-                tipoSelect.innerHTML = '<option value="">---------</option>';
-                return;
-            }
-
-            fetch(`${urlAjax}?categoria=${categoriaId}`)
-                .then(response => response.text())
-                .then(html => {
-                    tipoSelect.innerHTML = html;
-                    if (tipoSelecionado) {
-                        for (let i = 0; i < tipoSelect.options.length; i++) {
-                            if (tipoSelect.options[i].value === tipoSelecionado) {
-                                tipoSelect.selectedIndex = i;
-                                break;
-                            }
-                        }
-                    }
-                })
-                .catch(error => console.error('Erro ao carregar tipos:', error));
-        }
-
-        if (categoriaSelect) {
-            categoriaSelect.addEventListener('change', carregarTipos);
-        }
-    });
-
-    // --- 2. Lógica para Nova Marca ---
-    function criarNovaMarca() {
-        const nome = document.getElementById('inputNomeMarca').value;
-        const feedback = document.getElementById('feedbackMarca');
+    // Função GENÉRICA para salvar via AJAX
+    function salvarItem(tipo, url, selectId) {
+        const input = document.getElementById(`inputNome${tipo}`);
+        const nome = input.value.trim();
         
-        if (!nome) return;
+        if (!nome) { alert("Digite um nome!"); return; }
 
         const formData = new FormData();
         formData.append('nome', nome);
         formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
-        fetch('/api/epi/marca/nova/', { method: 'POST', body: formData })
+        fetch(url, { method: 'POST', body: formData })
         .then(r => r.json())
         .then(data => {
             if (data.id) {
-                const select = document.getElementById('id_marca'); // ID padrão do Django para o campo 'marca'
+                // Adiciona ao select correspondente e seleciona
+                const select = document.getElementById(selectId);
                 const option = new Option(data.nome, data.id, true, true);
                 select.add(option, undefined);
-                bootstrap.Modal.getInstance(document.getElementById('modalNovaMarca')).hide();
-                document.getElementById('inputNomeMarca').value = '';
+                
+                // Fecha modal e limpa
+                const modalEl = document.getElementById(`modalNovo${tipo}`);
+                bootstrap.Modal.getInstance(modalEl).hide();
+                input.value = '';
             } else {
-                feedback.innerText = "Erro ao salvar.";
-                feedback.classList.remove('d-none');
+                alert("Erro ao salvar: " + (data.erro || "Desconhecido"));
             }
         })
-        .catch(() => {
-            feedback.innerText = "Erro de conexão.";
-            feedback.classList.remove('d-none');
-        });
+        .catch(() => alert("Erro de conexão com o servidor."));
     }
+
+    // Lógica do Dropdown Dependente (Categoria -> Tipo)
+    document.addEventListener('DOMContentLoaded', function() {
+        const catSelect = document.getElementById('id_categoria'); // ou id_categoria_filtro (verifique forms.py)
+        const tipoSelect = document.getElementById('id_tipo');
+        const urlAjax = "{% url 'ajax_load_tipos' %}";
+
+        if (catSelect) {
+            catSelect.addEventListener('change', function() {
+                const catId = this.value;
+                if (!catId) { tipoSelect.innerHTML = '<option value="">---------</option>'; return; }
+                
+                fetch(`${urlAjax}?categoria=${catId}`)
+                    .then(r => r.text())
+                    .then(html => tipoSelect.innerHTML = html);
+            });
+        }
+    });
 </script>
 
 <style>
-    .form-control, .form-select {
-        padding: 0.6rem 0.8rem;
-        border-color: #e2e8f0;
-        border-radius: 8px;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    label {
-        letter-spacing: 0.5px;
-        font-size: 0.75rem;
-    }
+    /* Ajustes visuais */
+    .form-control, .form-select { padding: 0.6rem; border-color: #e2e8f0; border-radius: 6px; }
+    .form-control:focus, .form-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    label { letter-spacing: 0.5px; font-size: 0.7rem; }
+    .input-group .btn { border-color: #e2e8f0; }
+    .input-group .btn:hover { background-color: #f1f5f9; }
 </style>
 
 {% endblock %}
