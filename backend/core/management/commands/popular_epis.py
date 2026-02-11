@@ -2,109 +2,80 @@ from django.core.management.base import BaseCommand
 from core.models import CategoriaEPI, TipoEPI, Empresa
 
 class Command(BaseCommand):
-    help = 'LIMPA e depois POPULA as tabelas de Categorias e Tipos de EPI para todas as empresas'
+    help = 'Atualiza Categorias e Tipos de EPI sem apagar dados históricos (Seguro)'
 
     def handle(self, *args, **kwargs):
-        self.stdout.write(self.style.WARNING('Iniciando limpeza da base de Tipos de EPI...'))
-        
-        # 1. Apaga dados antigos para evitar duplicidade ou lixo
-        deleted_tipos, _ = TipoEPI.objects.all().delete()
-        deleted_cats, _ = CategoriaEPI.objects.all().delete()
-        
-        self.stdout.write(f'Removidos: {deleted_tipos} Tipos de EPI e {deleted_cats} Categorias antigas.')
+        self.stdout.write('Iniciando atualização inteligente de EPIs...')
 
-        # 2. Dados Padrão
+        # Dicionário de Dados Padrão
         dados_epi = {
             'Proteção da Cabeça': [
-                'Capacete de segurança aba frontal',
-                'Capacete de segurança aba total',
-                'Capuz ou balaclava para proteção térmica',
-                'Boné com proteção rígida (casquete)'
+                'Capacete aba frontal', 'Capacete aba total', 'Capuz/Balaclava', 
+                'Boné com proteção'
             ],
             'Proteção Auditiva': [
-                'Protetor auditivo circum-auricular (tipo concha)',
-                'Protetor auditivo de inserção (plug de silicone)',
-                'Protetor auditivo de inserção (plug de espuma moldável)',
-                'Protetor auditivo acoplado ao capacete'
+                'Protetor tipo Concha', 'Protetor tipo Plug (Silicone)', 
+                'Protetor de Espuma', 'Protetor acoplado ao capacete'
             ],
             'Proteção Respiratória': [
-                'Respirador purificador de ar não motorizado (PFF1)',
-                'Respirador purificador de ar não motorizado (PFF2/N95)',
-                'Respirador purificador de ar não motorizado (PFF3)',
-                'Respirador semi-facial com cartucho químico',
-                'Respirador facial inteiro',
-                'Máscara cirúrgica descartável'
+                'Máscara PFF1', 'Máscara PFF2 (N95)', 'Respirador Facial', 
+                'Máscara Semifacial', 'Respirador Motorizado'
             ],
             'Proteção Visual e Facial': [
-                'Óculos de segurança incolor (contra impactos)',
-                'Óculos de segurança escuro (contra luminosidade)',
-                'Óculos de segurança ampla visão (google)',
-                'Protetor facial (face shield)',
-                'Máscara de solda (escudo ou automática)',
-                'Óculos para maçariqueiro'
+                'Óculos Incolor', 'Óculos Escuro', 'Protetor Facial (Face Shield)', 
+                'Máscara de Solda', 'Óculos de sobreposição'
             ],
             'Proteção das Mãos': [
-                'Luva de vaqueta',
-                'Luva de raspa',
-                'Luva de malha pigmentada',
-                'Luva nitrílica (proteção química)',
-                'Luva de látex natural',
-                'Luva de PVC',
-                'Luva tátil (poliamida/PU)',
-                'Luva isolante de borracha (alta tensão)',
-                'Luva de proteção contra corte (fios de aço/kevlar)',
-                'Luva térmica (alta/baixa temperatura)'
+                'Luva de Vaqueta', 'Luva de Raspa', 'Luva Nitrílica', 
+                'Luva de Látex', 'Luva Tátil', 'Luva de Malha', 'Luva de PVC',
+                'Luva Isolante'
             ],
             'Proteção dos Pés': [
-                'Botina de segurança com biqueira de aço',
-                'Botina de segurança com biqueira de composite/plástico',
-                'Sapato de segurança ocupacional',
-                'Bota de PVC (galocha) impermeável',
-                'Bota de PVC cano longo',
-                'Perneira de segurança (raspa ou sintética)'
+                'Botina Biqueira de Aço', 'Botina Biqueira de Composite', 
+                'Bota de PVC (Galocha)', 'Sapato Social Segurança', 'Perneira'
             ],
             'Proteção do Corpo': [
-                'Avental de raspa',
-                'Avental de PVC impermeável',
-                'Macacão de segurança (tipo Tyvek)',
-                'Vestimenta de proteção contra arco elétrico',
-                'Capa de chuva',
-                'Colete reflexivo',
-                'Manguito de proteção'
+                'Avental de Raspa', 'Avental de PVC', 'Capa de Chuva', 
+                'Colete Reflexivo', 'Macacão Tyvek'
             ],
-            'Proteção Contra Quedas': [
-                'Cinturão de segurança tipo paraquedista',
-                'Cinturão abdominal',
-                'Talabarte em Y com absorvedor de energia',
-                'Talabarte de posicionamento',
-                'Trava-quedas deslizante',
-                'Trava-quedas retrátil'
+            'Proteção em Altura': [
+                'Cinto Paraquedista', 'Talabarte em Y', 'Trava-quedas',
+                'Talabarte de Posicionamento'
             ],
-            'Cremes Protetores': [
-                'Creme protetor solar (Fator 30+)',
-                'Creme protetor solar (Fator 60+)',
-                'Creme de proteção contra agentes químicos (Luva química)',
-                'Repelente de insetos'
+            'Cremes e Outros': [
+                'Creme Protetor Solar', 'Creme Luva Química', 'Repelente'
             ]
         }
 
         empresas = Empresa.objects.all()
-        if not empresas.exists():
-             self.stdout.write(self.style.ERROR('Nenhuma empresa cadastrada no sistema.'))
-             return
+        total_cats = 0
+        total_tipos = 0
 
-        total_geral = 0
-        
-        self.stdout.write('Recriando EPIs para todas as empresas...')
-        
         for empresa in empresas:
-            for nome_categoria, lista_tipos in dados_epi.items():
-                # Cria Categoria
-                CategoriaEPI.objects.get_or_create(empresa=empresa, nome=nome_categoria)
+            self.stdout.write(f'Processando empresa: {empresa.nome_fantasia}...')
+            
+            for nome_cat, lista_tipos in dados_epi.items():
+                # 1. Busca ou Cria a Categoria (Não deleta!)
+                cat_obj, created_cat = CategoriaEPI.objects.get_or_create(
+                    empresa=empresa, 
+                    nome=nome_cat
+                )
+                if created_cat: total_cats += 1
                 
-                # Cria Tipos
                 for nome_tipo in lista_tipos:
-                    TipoEPI.objects.create(empresa=empresa, nome=nome_tipo)
-                    total_geral += 1
+                    # 2. Busca ou Cria o Tipo vinculado à Categoria
+                    tipo_obj, created_tipo = TipoEPI.objects.get_or_create(
+                        empresa=empresa, 
+                        nome=nome_tipo,
+                        defaults={'categoria': cat_obj} # Só usa isso se for criar novo
+                    )
+                    
+                    # 3. Se o tipo já existia mas estava sem categoria (ou errada), corrige
+                    if not created_tipo and tipo_obj.categoria != cat_obj:
+                        tipo_obj.categoria = cat_obj
+                        tipo_obj.save()
+                        self.stdout.write(f'  -> Corrigido vínculo: {nome_tipo}')
 
-        self.stdout.write(self.style.SUCCESS(f'Concluído! {total_geral} tipos de EPI foram recriados e vinculados.'))
+                    if created_tipo: total_tipos += 1
+
+        self.stdout.write(self.style.SUCCESS(f'Concluído! {total_cats} categorias e {total_tipos} tipos novos adicionados/verificados.'))

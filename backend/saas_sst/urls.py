@@ -173,4 +173,6 @@ urlpatterns = [
     # dentro de urlpatterns...
     path('popular-padroes/', views.popular_padroes_usuario, name='popular_padroes'),
 
+    path('ajax/load-tipos/', views.load_tipos_epi, name='ajax_load_tipos'),
+
 ]

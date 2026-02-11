@@ -157,6 +157,16 @@ def detalhe_funcionario(request, id):
 
     # --- LÓGICA DE CRUZAMENTO (Matriz vs Histórico) ---
 
+    # [NOVO] E. EPIs (Herança da Matriz + Histórico)
+    epis_obrigatorios = []
+    if matriz:
+        # Pega os Tipos de EPI que a matriz exige
+        epis_obrigatorios = matriz.epis_obrigatorios.all()
+
+    # Busca o histórico de entregas reais para este funcionário
+    # (Supondo que você tenha o related_name='epis_entregues' no model EntregaEPI ou similar)
+    historico_entregas_epi = funcionario.epis_entregues.select_related('epi', 'epi__marca').order_by('-data_entrega')
+
     # A. EXAMES
     status_exames = []
     if matriz:
@@ -240,6 +250,11 @@ def detalhe_funcionario(request, id):
         'funcionario': funcionario,
         'matriz': matriz,
         
+        # [NOVO] Contexto de EPIs
+        'epis_obrigatorios': epis_obrigatorios,
+        'historico_entregas': historico_entregas_epi, # Usei nome diferente para não conflitar com 'epis' abaixo se quiser
+        'hoje': date.today(), # Útil para o template
+
         # Listas Processadas (Status)
         'status_exames': status_exames,
         'status_vacinas': status_vacinas,
@@ -267,6 +282,8 @@ def detalhe_funcionario(request, id):
         'form_exame': ExameForm(), 
     }
     return render(request, 'funcionario_detalhe.html', context)
+
+
 # --- AÇÕES DO PRONTUÁRIO (VIEWS DE REGISTRO) ---
 
 @login_required
@@ -374,18 +391,26 @@ def novo_epi(request):
 def editar_epi(request, id):
     return criar_editar_epi_logica(request, id)
 
-def criar_editar_epi_logica(request, pk):
+def criar_editar_epi_logica(request, epi_id=None):
     empresa = request.user.perfil.empresa
-    epi = get_object_or_404(EPI, pk=pk, empresa=empresa) if pk else None
+    epi = None
+    
+    if epi_id:
+        epi = get_object_or_404(EPI, pk=epi_id, empresa=empresa)
+
     if request.method == 'POST':
-        form = EPIForm(empresa.id, request.POST, instance=epi)
+        # CORREÇÃO AQUI: empresa_id deve ser passado como KWARG
+        form = EPIForm(request.POST, instance=epi, empresa_id=empresa.id)
         if form.is_valid():
-            obj = form.save(commit=False)
-            obj.empresa = empresa
-            obj.save()
+            novo_epi = form.save(commit=False)
+            novo_epi.empresa = empresa
+            # Se categoria não vier no save (pois é campo filtro), o tipo já resolve
+            novo_epi.save()
             return redirect('lista_epis')
     else:
-        form = EPIForm(empresa.id, instance=epi)
+        # CORREÇÃO AQUI TAMBÉM:
+        form = EPIForm(instance=epi, empresa_id=empresa.id)
+
     return render(request, 'epi_form.html', {'form': form})
 
 @login_required
@@ -1316,3 +1341,13 @@ def popular_padroes_usuario(request):
             if created: count += 1
             
     return JsonResponse({'status': 'ok', 'mensagem': f'{count} EPIs criados/verificados para a empresa {empresa.nome_fantasia}!'})
+
+
+def load_tipos_epi(request):
+    categoria_id = request.GET.get('categoria')
+    tipos = TipoEPI.objects.none()
+    
+    if categoria_id:
+        tipos = TipoEPI.objects.filter(categoria_id=categoria_id).order_by('nome')
+    
+    return render(request, 'partials/epis_dropdown_list.html', {'tipos': tipos})

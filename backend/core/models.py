@@ -191,13 +191,14 @@ class TamanhoEPI(models.Model):
 class TipoEPI(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     nome = models.CharField(max_length=100)
+    categoria = models.ForeignKey(CategoriaEPI, on_delete=models.CASCADE, related_name='tipos', null=True, blank=True)
     def __str__(self): return self.nome
 
 class EPI(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     # Estes campos foram restaurados para corrigir o erro do form
     categoria = models.ForeignKey(CategoriaEPI, on_delete=models.PROTECT, null=True, blank=True)
-    marca = models.ForeignKey(MarcaEPI, on_delete=models.PROTECT, null=True, blank=True)
+    fabricante = models.ForeignKey(MarcaEPI, on_delete=models.PROTECT, null=True, blank=True)
     tamanho = models.ForeignKey(TamanhoEPI, on_delete=models.PROTECT, null=True, blank=True)
     tipo = models.ForeignKey(TipoEPI, on_delete=models.PROTECT, null=True, blank=True)
     local = models.ForeignKey(Localizacao, on_delete=models.PROTECT, null=True, blank=True)

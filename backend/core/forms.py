@@ -120,7 +120,7 @@ class SetorForm(forms.ModelForm):
         label="Exames Padrão"
     )
     epis = forms.ModelMultipleChoiceField(
-        queryset=TipoEPI.objects.none(),
+        queryset=TipoEPI.objects.none(), # Começa vazio
         widget=forms.CheckboxSelectMultiple,
         required=False,
         label="EPIs Básicos (Tipos)"
@@ -147,10 +147,15 @@ class SetorForm(forms.ModelForm):
         if self.empresa:
             # Filtra os campos M2M pela empresa
             self.fields['riscos'].queryset = RiscoOcupacional.objects.filter(empresa=self.empresa)
-            self.fields['epis'].queryset = EPI.objects.filter(empresa=self.empresa)
+            
+            # --- CORREÇÃO AQUI ---
+            # Antes estava EPI.objects.filter (Estoque). Mudamos para TipoEPI.objects.filter (Tipos)
+            self.fields['epis'].queryset = TipoEPI.objects.filter(empresa=self.empresa).order_by('nome')
+            # ---------------------
+
             self.fields['vacinas'].queryset = Vacina.objects.filter(empresa=self.empresa)
             self.fields['exames'].queryset = TipoExame.objects.filter(empresa=self.empresa)
-            # NRs são globais, mas podemos filtrar se quiser
+            # NRs são globais
             self.fields['normas'].queryset = NormaRegulamentadora.objects.all()
             
             # Se for edição, preenche os campos iniciais
@@ -178,7 +183,6 @@ class SetorForm(forms.ModelForm):
         self.instance.exames.set(self.cleaned_data['exames'])
         self.instance.epis.set(self.cleaned_data['epis'])
 
-
 # --- CARGOS ---
 
 class CargoForm(forms.ModelForm):
@@ -194,32 +198,44 @@ class CargoForm(forms.ModelForm):
 # --- EPIs E ESTOQUE ---
 
 class EPIForm(forms.ModelForm):
+    # Campo auxiliar para o filtro (não será salvo no model EPI, serve só pro usuário escolher)
+    categoria_filtro = forms.ModelChoiceField(
+        queryset=CategoriaEPI.objects.none(),
+        label="Categoria (Filtro)",
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_categoria_filtro'})
+    )
+
     class Meta:
         model = EPI
-        fields = [
-            'categoria', 'marca', 'modelo', 'tamanho', 
-            'ca', 'data_validade', 'local',
-            'quantidade', 'quantidade_minima'
-        ]
+        fields = ['categoria_filtro', 'tipo', 'fabricante', 'ca', 'data_validade', 'quantidade']
+        # Adicione seus outros campos aqui
         widgets = {
+            'tipo': forms.Select(attrs={'class': 'form-select', 'id': 'id_tipo'}),
             'data_validade': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'ca': forms.TextInput(attrs={'class': 'form-control'}),
-            'modelo': forms.TextInput(attrs={'class': 'form-control'}),
-            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
-            'quantidade_minima': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
-            'categoria': forms.Select(attrs={'class': 'form-select'}),
-            'marca': forms.Select(attrs={'class': 'form-select'}),
-            'tamanho': forms.Select(attrs={'class': 'form-select'}),
-            'local': forms.Select(attrs={'class': 'form-select'}),
+            # ...
         }
 
-    def __init__(self, empresa_id, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        empresa_id = kwargs.pop('empresa_id', None)
         super().__init__(*args, **kwargs)
+
         if empresa_id:
-            self.fields['categoria'].queryset = CategoriaEPI.objects.filter(empresa_id=empresa_id)
-            self.fields['marca'].queryset = MarcaEPI.objects.filter(empresa_id=empresa_id)
-            self.fields['tamanho'].queryset = TamanhoEPI.objects.filter(empresa_id=empresa_id)
-            self.fields['local'].queryset = Localizacao.objects.filter(empresa_id=empresa_id)
+            # Popula a categoria
+            self.fields['categoria_filtro'].queryset = CategoriaEPI.objects.filter(empresa_id=empresa_id)
+            # Popula o tipo (inicialmente vazio ou filtrado se já tiver instância)
+            self.fields['tipo'].queryset = TipoEPI.objects.none()
+
+            if 'categoria_filtro' in self.data:
+                try:
+                    cat_id = int(self.data.get('categoria_filtro'))
+                    self.fields['tipo'].queryset = TipoEPI.objects.filter(categoria_id=cat_id).order_by('nome')
+                except (ValueError, TypeError):
+                    pass  
+            elif self.instance.pk and self.instance.tipo:
+                # Se for edição, carrega o tipo atual e a categoria correspondente
+                self.fields['tipo'].queryset = TipoEPI.objects.filter(categoria=self.instance.tipo.categoria).order_by('nome')
+                self.fields['categoria_filtro'].initial = self.instance.tipo.categoria
 
 class EntregaEPIForm(forms.ModelForm):
     class Meta:

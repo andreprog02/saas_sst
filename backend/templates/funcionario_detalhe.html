@@ -258,8 +258,31 @@
                         </div>
 
                         <div class="tab-pane fade" id="tab-epis">
+                            
+                            <div class="mb-5">
+                                <h6 class="fw-bold text-uppercase text-secondary mb-3" style="font-size: 0.75rem; letter-spacing: 1px;">
+                                    <i class="fas fa-clipboard-list me-2"></i> EPIs Obrigatórios (Matriz)
+                                </h6>
+                                {% if epis_obrigatorios %}
+                                    <div class="row g-2">
+                                        {% for tipo_epi in epis_obrigatorios %}
+                                        <div class="col-md-6 col-lg-4">
+                                            <div class="p-3 border rounded bg-white shadow-sm d-flex align-items-center">
+                                                <div class="icon-box-sm bg-light text-primary me-3"><i class="fas fa-shield-alt"></i></div>
+                                                <span class="fw-bold text-dark" style="font-size: 0.9rem;">{{ tipo_epi.nome }}</span>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-light border-0 text-muted small">
+                                        <i class="fas fa-info-circle me-1"></i> Nenhum EPI obrigatório definido para este cargo na Matriz.
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
                             <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h5 class="fw-bold mb-0 text-dark">Histórico de Entrega</h5>
+                                <h5 class="fw-bold mb-0 text-dark">Histórico de Entrega (Estoque)</h5>
                                 <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalEPI">
                                     <i class="fas fa-plus me-1"></i> Entregar EPI
                                 </button>
@@ -268,13 +291,10 @@
                                 <table class="table table-modern align-middle mb-0">
                                     <thead class="bg-light"><tr><th>Data</th><th>Equipamento</th><th>Qtd</th><th>CA</th><th>Motivo</th><th>Recibo</th></tr></thead>
                                     <tbody>
-                                        {% for entrega in epis %}
-                                        <tr>
+                                        {% for entrega in historico_entregas %} <tr>
                                             <td>{{ entrega.data_entrega|date:"d/m/Y" }}</td>
-                                            <td class="fw-bold text-dark">{{ entrega.epi.tipo.nome }}</td>
-                                            <td>{{ entrega.quantidade }}</td>
-                                            <td><span class="badge bg-light text-dark border">{{ entrega.ca_registrado }}</span></td>
-                                            <td>{{ entrega.motivo }}</td>
+                                            <td class="fw-bold text-dark">{{ entrega.epi.nome }}</td> <td>{{ entrega.quantidade }}</td>
+                                            <td><span class="badge bg-light text-dark border">{{ entrega.epi.ca }}</span></td> <td>{{ entrega.motivo }}</td>
                                             <td>
                                                 {% if entrega.termo_assinado %}
                                                     <a href="{{ entrega.termo_assinado.url }}" target="_blank" class="text-success"><i class="fas fa-file-signature fa-lg"></i></a>

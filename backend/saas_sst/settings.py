@@ -87,6 +87,7 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD'), # Senha lida do arquivo .env
         'HOST': 'aws-1-us-east-1.pooler.supabase.com',
         'PORT': '6543',
+        'DISABLE_SERVER_SIDE_CURSORS': True,
     }
 }
 
